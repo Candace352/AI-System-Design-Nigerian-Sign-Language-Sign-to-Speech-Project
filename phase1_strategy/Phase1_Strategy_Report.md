@@ -3,7 +3,7 @@
 
 ### Scope note/adjustment: adapting the rubric to computer vision
 
-This is a multi-class **object-detection** project, not a tabular prediction problem. The model consumes image pixels and predicts a sign class and bounding box. Therefore, tabular-only methods—such as Pearson screening of raw pixels, VIF, ordinal encoding of class labels, mean/median imputation, and `StandardScaler`—are not applied to the image tensor. Equivalent computer-vision controls are specified below: annotation validation, image-quality checks, class-balance analysis, duplicate detection, and leakage-safe dataset partitioning. Any statistic marked **[audit value]** will be calculated from the downloaded raw data before model training; it must not be guessed.
+This is a multi-class **object-detection** project, not a tabular prediction problem. The model consumes image pixels and predicts a sign class and bounding box. Therefore, tabular-only methods—such as Pearson screening of raw pixels, VIF, ordinal encoding of class labels, mean/median imputation, and `StandardScaler`—are not applied to the image tensor. Equivalent computer-vision controls are specified below: annotation validation, image-quality checks, class-balance analysis, duplicate detection, and leakage-safe dataset partitioning. The Pascal VOC values below were computed directly from the supplied archive on 14 October 2026; the separately packaged YOLO copy will not be merged with it because that would duplicate observations.
 
 ## A. Dataset and problem audit
 
@@ -13,15 +13,17 @@ The source dataset is the [Lanfrica/Hugging Face Nigerian Sign Language dataset]
 
 The primary observation is one annotated RGB image containing an isolated sign. The modelling tensor for each observation is an image resized with aspect-ratio-preserving letterboxing to **640 × 640 × 3**. The raw image collection is not naturally a two-dimensional table, so an audit manifest will be constructed with one row per annotated image/object.
 
-The supplied `reference-original.zip` was inspected as a baseline implementation. It contains the original YOLOv5 model configuration, training logs, visual diagnostics, webcam client, and a `best.pt` model file, but **does not contain the source image/label dataset itself**. Therefore, it supports a precise baseline audit but cannot supply the required raw-data missingness, class-count, or signer-level statistics. Those values remain audit items after the authorised dataset download.
+The supplied `reference-original.zip` was inspected as a baseline implementation. It contains the original YOLOv5 model configuration, training logs, visual diagnostics, webcam client, and a `best.pt` model file, but **does not contain the source image/label dataset itself**. The subsequently supplied dataset archive does contain the raw images and annotations in two parallel representations: Pascal VOC (`train/` and `test/`, JPEG/XML) and YOLO (`dataset_YOLO/`, JPEG/TXT). The audit below uses the Pascal VOC representation as the raw source; the project will convert or validate one representation only before training, never concatenate both.
 
 | Audit quantity | Definition | Phase 1 value |
 |---|---|---|
-| `N_images` | Readable image files | **[audit value]**; expected approximately 5,000 |
-| `N_annotations` | Valid bounding boxes | **[audit value]** |
+| `N_images` | Readable Pascal VOC image files | 4,929 |
+| `N_annotations` | Matched Pascal VOC XML annotation files | 4,929 |
+| `N_objects` | Valid annotated sign boxes across all XML files | 5,204 |
 | `P_manifest` | Core columns in the derived audit manifest | 11 |
-| Class count | Unique NSL labels | **[audit value]**; expected 137 |
-| Image tensor | Pixels supplied to YOLO26 | 640 × 640 × 3 after preprocessing |
+| Class count | Unique labels observed and in the archive label map | 136 |
+| Raw image dimensions | Image dimensions before letterboxing | 640 × 480 × 3 for all 4,929 images |
+| Model input tensor | Pixels supplied to YOLO26 | 640 × 640 × 3 after letterbox preprocessing |
 
 The 11 manifest columns are: `image_id`, `relative_path`, `image_width_px`, `image_height_px`, `channels`, `class_name`, `class_id`, `x_center`, `y_center`, `box_width`, and `box_height`. If the release includes signer, collection session, background, or lighting fields, they will be retained as audit metadata, not used as model inputs.
 
@@ -42,22 +44,28 @@ There are no ordinal predictors in the primary detector. In particular, NSL clas
 
 ### A3. Baseline missingness and annotation-integrity audit
 
-Before cleaning, the audit script will report the following, both as counts and percentages:
+Before cleaning, the audit script reported the following for the Pascal VOC source:
 
-1. Missing/unreadable image files, zero-byte files, and non-RGB or invalid dimensions.
-2. Images with no matching label file; label files with no matching image; empty label files.
-3. Missing, non-numeric, out-of-range, or geometrically invalid bounding-box values.
-4. Missing class names/IDs or IDs outside the class map.
-5. Missing signer/session/background/lighting metadata, if such fields exist.
-6. Complete image–annotation pairs versus rows with one or more integrity failure.
+| Integrity check | Result | Rate |
+|---|---:|---:|
+| Readable RGB images | 4,929 / 4,929 | 100% |
+| Image/XML pairs | 4,929 / 4,929 | 100% complete pairs |
+| Images without XML annotation | 0 | 0% |
+| XML annotations without image | 0 | 0% |
+| Malformed XML files | 0 | 0% |
+| Missing required filename, size, class, or box fields | 0 | 0% |
+| Geometrically invalid boxes | 0 / 5,204 objects | 0% |
+| Observed image mode and dimensions | RGB, 640 × 480 | 100% |
 
-The overall missingness rate will be reported as: `number of failed required image/annotation fields ÷ number of required fields inspected`. Metadata missingness will be reported separately so that absent optional metadata is not confused with a missing training label.
+The supplied archive uses 136 label-map classes, despite the paper/repository description referring to 137 labels. This report uses the auditable archive value, **136**, and treats the documentation discrepancy as a data-version issue that must be stated in the final report.
+
+The overall required-field missingness rate is therefore 0% for this Pascal VOC audit. Signer, session, background, and lighting metadata are not present in the inspected annotation schema; their availability cannot be inferred from filenames and is reported as unavailable rather than zero missing.
 
 ### A4. Target specification and class balance
 
 The task is **multi-class object detection**, comprising (1) nominal classification of the NSL sign and (2) bounding-box localisation. It is not regression or ordinary image classification. The target is each valid pair of `class_id` and bounding box.
 
-Class balance will be audited with class counts, percentage share, minimum/median/maximum examples per class, and imbalance ratio `largest class count ÷ smallest class count`. The initial strategy is to preserve all valid minority-class images, stratify splits by class where feasible, and use conservative training-only augmentation. No synthetic labels will be created. If a class has too few examples for all three splits, that class will be reported as an evaluation limitation and a targeted consented data collection will be preferred over duplicating it into the test set.
+The Pascal VOC audit found 136 observed classes across 5,204 labelled objects. Per-class object counts range from **4** (`love`) to **72** (`D` and `K`), with a median of **37** and an imbalance ratio of **18:1**. The initial strategy is to preserve all valid minority-class images, stratify splits by class where feasible, and use conservative training-only augmentation. No synthetic labels will be created. If a class has too few examples for all three splits, that class will be reported as an evaluation limitation and a targeted consented data collection will be preferred over duplicating it into the test set.
 
 ## B. Cleaning, imputation, outliers, and association strategy
 
@@ -89,6 +97,8 @@ Outlier checks will flag records for review, not automatically delete valid exam
 
 The tabular Z-score rule (`|z| > 3`) is not the primary rule because box sizes, aspect ratios, brightness, and blur measures are expected to be skewed. IQR is more robust for these audit measures. No winsorisation/capping will be applied to image pixels or bounding-box labels: clipping would alter the visual evidence or move the true target. Valid extreme observations are retained; only objectively invalid files/annotations are removed.
 
+**Observed duplicate leakage.** Exact SHA-256 matching found 114 duplicate groups containing 228 images (4.63% of the 4,929 Pascal VOC images). Every duplicate group crosses the archive's supplied train/test boundary. Consequently, the archive's original `train/` and `test/` folders are not valid for final evaluation and will not be used unchanged. Duplicate clusters must be treated as indivisible groups when creating new partitions.
+
 ### B3. Statistical association and multicollinearity protocol
 
 Raw image pixels are high-dimensional spatial inputs, so pairwise Pearson correlation and VIF are not meaningful feature-selection tools for YOLO26. The detector learns visual features directly from the image. The following audit associations will instead be used to identify dataset bias and potential leakage:
@@ -116,7 +126,7 @@ These diagnostics are descriptive quality-control tests, not a basis for droppin
 
 ### C2. Split and leakage-prevention design
 
-The planned split is **70% training, 15% validation, and 15% test**. With approximately 5,000 images, this preserves roughly 3,500 training images for fine-tuning while reserving about 750 examples each for model selection and one final unbiased test. Exact counts will be reported after the audit.
+The planned split is **70% training, 15% validation, and 15% test**, constructed anew after removing or grouping exact duplicates. The raw Pascal VOC source contains 4,929 images, so an ungrouped nominal allocation would be approximately 3,450/739/740 images; final counts may vary because duplicate clusters and class-stratification constraints take precedence over exact ratios.
 
 1. **Stratification:** Maintain sign-class representation across train, validation, and test as far as class frequencies permit. The audit will identify any rare classes that cannot be represented in every partition.
 2. **Group separation:** If signer IDs are available, all images from one signer will be assigned to one partition only. Group separation takes precedence over exact class proportions. If signer IDs are absent, duplicate/near-duplicate clusters and identifiable capture-session folders will be kept intact in one partition. A small external unseen-user test may be added later, with consent, as a robustness evaluation.
