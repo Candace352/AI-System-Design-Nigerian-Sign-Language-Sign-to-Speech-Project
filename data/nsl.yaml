@@ -1,0 +1,14 @@
+# Change these paths after downloading and arranging the dataset.
+# The paths are relative to this YAML file's parent directory.
+path: ./nsl_yolo_dataset
+train: images/train
+val: images/val
+test: images/test
+
+# Replace this illustrative list with the complete class list from your dataset.
+# Class IDs in every labels/*.txt file must match this list exactly.
+names:
+  0: hello
+  1: thank_you
+  2: yes
+  3: no

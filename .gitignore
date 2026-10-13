@@ -1,0 +1,27 @@
+# Dataset artefacts: download locally; never commit images, labels, or derived splits.
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+
+# Model outputs, caches, experiment logs, and notebook checkpoints.
+runs/
+weights/
+*.pt
+*.onnx
+*.engine
+*.cache
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# Local environments and operating-system files.
+.venv/
+venv/
+env/
+.DS_Store
+
+# Generated Phase 2 reports and figures may be committed only after review.
+phase2_implementation/*.pdf
+figures/*.png
+figures/*.svg
