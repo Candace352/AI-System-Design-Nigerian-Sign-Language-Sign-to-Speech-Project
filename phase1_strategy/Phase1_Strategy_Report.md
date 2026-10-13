@@ -1,7 +1,7 @@
 # Phase 1: Preprocessing and Feature-Engineering Strategy
 ## Nigerian Sign Language Sign-to-Speech Using YOLO26
 
-### Scope note: adapting the rubric to computer vision
+### Scope note/adjustment: adapting the rubric to computer vision
 
 This is a multi-class **object-detection** project, not a tabular prediction problem. The model consumes image pixels and predicts a sign class and bounding box. Therefore, tabular-only methods—such as Pearson screening of raw pixels, VIF, ordinal encoding of class labels, mean/median imputation, and `StandardScaler`—are not applied to the image tensor. Equivalent computer-vision controls are specified below: annotation validation, image-quality checks, class-balance analysis, duplicate detection, and leakage-safe dataset partitioning. Any statistic marked **[audit value]** will be calculated from the downloaded raw data before model training; it must not be guessed.
 
