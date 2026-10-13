@@ -28,7 +28,7 @@ class PreprocessingConfig:
     """Image transformations; augmentation is training-only by design."""
 
     image_size: int = 640
-    horizontal_flip_probability: float = 0.0  # Enable only after NSL-expert review.
+    horizontal_flip_probability: float = 0.0  
     use_hsv_augmentation: bool = True
     use_scale_translation_augmentation: bool = True
 
