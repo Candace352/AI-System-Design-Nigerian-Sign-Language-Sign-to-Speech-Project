@@ -23,7 +23,7 @@ The supplied `reference-original.zip` was inspected as a baseline implementation
 | Class count | Unique NSL labels in the archive label map | **136** |
 | Image tensor | Pixels supplied to YOLO26 | 640 × 480 × 3 raw; 640 × 640 × 3 after letterboxing |
 
-The 11 manifest columns are: `image_id`, `relative_path`, `image_width_px`, `image_height_px`, `channels`, `class_name`, `class_id`, `x_center`, `y_center`, `box_width`, and `box_height`. If the release includes signer, collection session, background, or lighting fields, they will be retained as audit metadata, not used as model inputs.
+The 11 manifest columns are: `image_id`, `relative_path`, `image_width_px`, `image_height_px`, `channels`, `class_name`, `class_id`, `x_center`, `y_center`, `box_width`, and `box_height`. 
 
 ### A2. Variable inventory and data types
 
