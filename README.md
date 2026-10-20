@@ -25,6 +25,72 @@ The supplied `reference-original.zip` was inspected as a baseline implementation
 
 The 11 manifest columns are: `image_id`, `relative_path`, `image_width_px`, `image_height_px`, `channels`, `class_name`, `class_id`, `x_center`, `y_center`, `box_width`, and `box_height`. 
 
+### Example of the images within the Nigerian Sign Language  Sign to Speech Dataset
+### Example Image and Annotation from the Nigerian Sign Language Sign-to-Speech Dataset
+
+The Nigerian Sign Language (NSL) Sign-to-Speech dataset contains images of individuals performing different signs in diverse environments. Each image is accompanied by annotation files that identify the sign being performed and specify its location within the image.
+
+#### 1. Sample Image
+
+The image below shows an individual performing the sign **"accept"** in a classroom environment.
+
+<img width="640" height="480" alt="Nigerian Sign Language - accept" src="https://github.com/user-attachments/assets/09cb63bb-d4b6-4a59-ae4c-cb1ceae49dd2" />
+
+#### 2. Corresponding PASCAL VOC (XML) Annotation
+
+Each image has a corresponding XML annotation file in PASCAL VOC format. The annotation provides information about the image dimensions, the sign class, and the bounding-box coordinates identifying the region associated with the sign.
+
+For the image above, the corresponding annotation is:
+
+```xml
+<annotation>
+    <folder>XML</folder>
+    <filename>accept_0f05c0f8-16e2-11ec-a3b7-d8fc93b4157c.jpg</filename>
+    <path>/home/lalah/sign_dataset/dataset/accept_0f05c0f8-16e2-11ec-a3b7-d8fc93b4157c.jpg</path>
+    <source>
+        <database>Unknown</database>
+    </source>
+    <size>
+        <width>640</width>
+        <height>480</height>
+        <depth>3</depth>
+    </size>
+    <segmented>0</segmented>
+    <object>
+        <name>accept</name>
+        <pose>Unspecified</pose>
+        <truncated>0</truncated>
+        <difficult>0</difficult>
+        <bndbox>
+            <xmin>14</xmin>
+            <ymin>274</ymin>
+            <xmax>502</xmax>
+            <ymax>451</ymax>
+        </bndbox>
+    </object>
+</annotation>
+```
+
+#### 3. Understanding the Annotation
+
+The key annotation fields are:
+
+| Field | Description |
+|---|---|
+| `filename` | Name of the corresponding image file |
+| `width`, `height`, `depth` | Image dimensions (640 × 480 pixels, 3 color channels) |
+| `name` | Ground-truth sign class, in this case `accept` |
+| `xmin`, `ymin` | Top-left coordinates of the bounding box |
+| `xmax`, `ymax` | Bottom-right coordinates of the bounding box |
+| `segmented` | Indicates whether the object has a segmentation annotation; `0` means it is not marked as segmented |
+
+In this example, the bounding box extends from **(14, 274)** to **(502, 451)**, identifying the region associated with the sign "accept".
+
+**Observation:** Although the image contains multiple individuals and background objects, the annotation identifies only the target sign region. The bounding box does not isolate the entire signer or remove background elements.
+
+This distinction is important when examining the raw dataset and considering preprocessing techniques such as signer cropping, background removal, or person segmentation.
+
+
 ### A2. Variable inventory and data types
 
 | Variable | Type | Role and treatment |
