@@ -25,7 +25,6 @@ The supplied `reference-original.zip` was inspected as a baseline implementation
 
 The 11 manifest columns are: `image_id`, `relative_path`, `image_width_px`, `image_height_px`, `channels`, `class_name`, `class_id`, `x_center`, `y_center`, `box_width`, and `box_height`. 
 
-### Example of the images within the Nigerian Sign Language  Sign to Speech Dataset
 ### Example Image and Annotation from the Nigerian Sign Language Sign-to-Speech Dataset
 
 The Nigerian Sign Language (NSL) Sign-to-Speech dataset contains images of individuals performing different signs in diverse environments. Each image is accompanied by annotation files that identify the sign being performed and specify its location within the image.
@@ -86,7 +85,7 @@ The key annotation fields are:
 
 In this example, the bounding box extends from **(14, 274)** to **(502, 451)**, identifying the region associated with the sign "accept".
 
-**Observation:** Although the image contains multiple individuals and background objects, the annotation identifies only the target sign region. The bounding box does not isolate the entire signer or remove background elements.
+**Observation:** Although the image contains multiple individuals and background objects, the annotation identifies only the target sign region. The bounding box does not isolate the entire signer or remove background elements. It is also important to note that each image and its corresponding XML annotation file share the same filename, differing only in their file extensions (`.jpg` for the image and `.xml` for the annotation). This naming convention makes it easy to associate each image with its corresponding annotation.
 
 This distinction is important when examining the raw dataset and considering preprocessing techniques such as signer cropping, background removal, or person segmentation.
 
