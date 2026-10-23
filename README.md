@@ -1,9 +1,19 @@
 # Phase 1: Preprocessing and Feature-Engineering Strategy
 ## Nigerian Sign Language Sign-to-Speech Using YOLO26
 
+## Contents
+
+- [Dataset and problem audit](#a-dataset-and-problem-audit)
+- [Raw-data visual diagnostics](#raw-data-visual-diagnostics)
+- [Cleaning, imputation, outliers, and association strategy](#b-cleaning-imputation-outliers-and-association-strategy)
+- [Encoding, scaling, transformation, and partition strategy](#c-encoding-scaling-transformation-and-partition-strategy)
+- [Original implementation and proposed improvements](#d-audit-of-the-supplied-original-implementation-and-proposed-improvements)
+- [Reproducibility and deliverables](#reproducibility-and-deliverables)
+- [References](#references)
+
 ### Scope note: adapting the rubric to computer vision
 
-This is a multi-class **object-detection** project, not a tabular prediction problem. The model consumes image pixels and predicts a sign class and bounding box. Therefore, tabular-only methods—such as Pearson screening of raw pixels, VIF, ordinal encoding of class labels, mean/median imputation, and `StandardScaler`—are not applied to the image tensor. Equivalent computer-vision controls are specified below: annotation validation, image-quality checks, class-balance analysis, duplicate detection, and leakage-safe dataset partitioning. Any statistic marked **[audit value]** will be calculated from the downloaded raw data before model training; it must not be guessed.
+This is a multi-class **object-detection** project, not a tabular prediction problem. The model consumes image pixels and predicts a sign class and bounding box. Therefore, tabular-only methods—such as Pearson screening of raw pixels, VIF, ordinal encoding of class labels, mean/median imputation, and `StandardScaler`—are not applied to the image tensor. Computer-vision controls include annotation validation, image-quality checks, class-balance analysis, duplicate detection, and leakage-safe dataset partitioning. Results below distinguish completed checks from planned work.
 
 ## A. Dataset and problem audit
 
@@ -13,17 +23,122 @@ The source dataset is the [Lanfrica/Hugging Face Nigerian Sign Language dataset]
 
 The primary observation is one annotated RGB image containing an isolated sign. The modelling tensor for each observation is an image resized with aspect-ratio-preserving letterboxing to **640 × 640 × 3**. The raw image collection is not naturally a two-dimensional table, so an audit manifest will be constructed with one row per annotated image/object.
 
-The supplied `reference-original.zip` was inspected as a baseline implementation. It contains the original YOLOv5 model configuration, training logs, visual diagnostics, webcam client, and a `best.pt` model file, but **does not contain the source image/label dataset itself**. Therefore, it supports a precise baseline audit but cannot supply the required raw-data missingness, class-count, or signer-level statistics. Those values remain audit items after the authorised dataset download.
+The reference implementation was inspected separately from the downloaded image dataset. The diagnostics below use `dataset/images` and `dataset/annotations/PASCAL_VOC`; the separate `dataset_YOLO` and root-level `train`/`test` layouts have not been reconciled with these counts.
 
 | Audit quantity | Definition | Phase 1 value |
 |---|---|---|
-| `N_images` | Readable Pascal VOC image files | **4,929** |
-| `N_annotations` | Matched Pascal VOC XML annotation files | **4,929** |
-| `P_manifest` | Core columns in the derived audit manifest | 11 |
-| Class count | Unique NSL labels in the archive label map | **136** |
+| `N_images` | Indexed images in `dataset/images` | **4,815** |
+| `N_annotations` | XML files in the inspected annotations folder | **4,815** |
+| Class count | Distinct image-folder names in the notebook | **137** |
+| Valid boxes | Images with at least one geometrically valid extracted box | **4,814** |
 | Image tensor | Pixels supplied to YOLO26 | 640 × 480 × 3 raw; 640 × 640 × 3 after letterboxing |
 
-The 11 manifest columns are: `image_id`, `relative_path`, `image_width_px`, `image_height_px`, `channels`, `class_name`, `class_id`, `x_center`, `y_center`, `box_width`, and `box_height`. 
+The notebook uses image-folder names for the class distribution and records at most one valid bounding box per image for its box statistics. These counts do not establish that every label is semantically correct or that the class map matches the YOLO files.
+
+### Example Image and Annotation from the Nigerian Sign Language Sign-to-Speech Dataset
+
+The Nigerian Sign Language (NSL) Sign-to-Speech dataset contains images of individuals performing different signs in diverse environments. Each image is accompanied by annotation files that identify the sign being performed and specify its location within the image.
+
+#### 1. Sample Image
+
+The image below shows an individual performing the sign **"accept"** in a classroom environment.
+
+<img width="640" height="480" alt="Nigerian Sign Language - accept" src="https://github.com/user-attachments/assets/09cb63bb-d4b6-4a59-ae4c-cb1ceae49dd2" />
+
+#### 2. Corresponding PASCAL VOC (XML) Annotation
+
+Each image has a corresponding XML annotation file in PASCAL VOC format. The annotation provides information about the image dimensions, the sign class, and the bounding-box coordinates identifying the region associated with the sign.
+
+For the image above, the corresponding annotation is:
+
+```xml
+<annotation>
+    <folder>XML</folder>
+    <filename>accept_0f05c0f8-16e2-11ec-a3b7-d8fc93b4157c.jpg</filename>
+    <path>/home/lalah/sign_dataset/dataset/accept_0f05c0f8-16e2-11ec-a3b7-d8fc93b4157c.jpg</path>
+    <source>
+        <database>Unknown</database>
+    </source>
+    <size>
+        <width>640</width>
+        <height>480</height>
+        <depth>3</depth>
+    </size>
+    <segmented>0</segmented>
+    <object>
+        <name>accept</name>
+        <pose>Unspecified</pose>
+        <truncated>0</truncated>
+        <difficult>0</difficult>
+        <bndbox>
+            <xmin>14</xmin>
+            <ymin>274</ymin>
+            <xmax>502</xmax>
+            <ymax>451</ymax>
+        </bndbox>
+    </object>
+</annotation>
+```
+
+#### 3. Understanding the Annotation
+
+The key annotation fields are:
+
+| Field | Description |
+|---|---|
+| `filename` | Name of the corresponding image file |
+| `width`, `height`, `depth` | Image dimensions (640 × 480 pixels, 3 color channels) |
+| `name` | Ground-truth sign class, in this case `accept` |
+| `xmin`, `ymin` | Top-left coordinates of the bounding box |
+| `xmax`, `ymax` | Bottom-right coordinates of the bounding box |
+| `segmented` | Indicates whether the object has a segmentation annotation; `0` means it is not marked as segmented |
+
+In this example, the bounding box extends from **(14, 274)** to **(502, 451)**, identifying the region associated with the sign "accept".
+
+**Observation:** Although the image contains multiple individuals and background objects, the annotation identifies only the target sign region. The bounding box does not isolate the entire signer or remove background elements. It is also important to note that each image and its corresponding XML annotation file share the same filename, differing only in their file extensions (`.jpg` for the image and `.xml` for the annotation). This naming convention makes it easy to associate each image with its corresponding annotation.
+
+This distinction is important when examining the raw dataset and considering preprocessing techniques such as signer cropping, background removal, or person segmentation.
+
+
+## Raw-data visual diagnostics
+
+These figures describe the inspected `dataset/images` and Pascal VOC annotations before cleaning. They are exploratory, not results from a trained YOLO model. Folder-derived sign names and the first valid extracted box per image are subject to the notebook's checks and limitations.
+
+### Representative sign images
+
+Examples from different class folders illustrate variation in sign appearance, backgrounds and lighting. The grid is illustrative rather than a measurement of background robustness.
+
+![Representative images across NSL sign classes](figures/representative_class_image_grid.png)
+
+### Class distribution
+
+The notebook reports 4,815 images across 137 folder-derived class names, with 4–65 images per class. This uneven representation is important when designing splits and interpreting per-class results.
+
+![Distribution of images across sign classes](figures/class_distribution_all_137.png)
+
+### Annotation coverage and quality
+
+The notebook reports 4,814 images with a geometrically valid extracted box and one image with an empty annotation. This checks coordinate validity, not whether a box encloses the correct sign. The flagged annotation needs review.
+
+![Annotation coverage and quality](figures/annotation_coverage_quality.png)
+
+### Image dimensions
+
+The notebook reports one image resolution, 640 × 480 pixels, in this inspected image collection. This is the raw image size, not the 640 × 640 model input planned for letterboxing.
+
+![Distribution of image dimensions](figures/image_dimensions.png)
+
+### Bounding-box characteristics
+
+Box area, shape and center position describe the framing of the extracted annotations. The notebook reports a median area of 12.6% of the image; it uses at most one valid box per image, so the plot is not an inventory of every object annotation.
+
+![Bounding-box area, aspect ratio and positions](figures/bounding_box_analysis.png)
+
+### Illustrative preprocessing transformations
+
+This figure compares possible changes to one image. These are demonstrations, not evidence that transformations were applied to the dataset or that any method improves performance. Cropping may remove useful facial or body context.
+
+![Illustrative preprocessing transformation grid](figures/preprocessing_transformation_grid.png)
 
 ### A2. Variable inventory and data types
 
@@ -166,19 +281,9 @@ The live inference system will use a confidence threshold `τ` and a fixed tempo
 
 Initial values (`τ = 0.65`, `W = 8`, `K = 8`, and a two-second cooldown) are starting points, not final claims. They will be selected using validation events only. The final test set will evaluate the locked policy once. The analysis will report the reliability–latency trade-off: stricter settings may reduce incorrect speech but increase abstentions or response delay.
 
-### D4. Figures and evidence planned for Phase 1
+### D4. Remaining audit work
 
-The Phase 1 submission will save the following reproducible diagnostics under `figures/` after audit:
-
-1. Missing/invalid-image and annotation summary table.
-2. Per-class frequency bar chart and imbalance ratio.
-3. Bounding-box area and aspect-ratio distributions with IQR flags.
-4. Image brightness and blur distributions with reviewed flags.
-5. Exact/near-duplicate audit summary and split-cluster leakage check.
-6. Train/validation/test class-distribution comparison.
-7. Sample annotation montage, including representative valid, flagged, and excluded records.
-
-The original archive's `labels.jpg`, `labels_correlogram.jpg`, training batches, test batches, confusion matrix, precision–recall curve, and training-results plot will be retained as **reference baseline artifacts**, not re-labelled as results from this project.
+The figures above summarize the inspected Pascal VOC collection. The YOLO-format annotations and class ordering, duplicates and near-duplicates, signer/session metadata, and any new split still need separate verification. Original model training plots are historical reference artifacts, not results from this project.
 
 ### Reproducibility and deliverables
 
