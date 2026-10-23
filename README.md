@@ -31,15 +31,11 @@ The reference implementation was inspected separately from the downloaded image 
 | `N_annotations` | XML files in the inspected annotations folder | **4,815** |
 | Class count | Distinct image-folder names in the notebook | **137** |
 | Valid boxes | Images with at least one geometrically valid extracted box | **4,814** |
-| Image tensor | Pixels supplied to YOLO26 | 640 × 480 × 3 raw; 640 × 640 × 3 after letterboxing |
-
-The notebook uses image-folder names for the class distribution and records at most one valid bounding box per image for its box statistics. These counts do not establish that every label is semantically correct or that the class map matches the YOLO files.
-
-### Example Image and Annotation from the Nigerian Sign Language Sign-to-Speech Dataset
-
-The Nigerian Sign Language (NSL) Sign-to-Speech dataset contains images of individuals performing different signs in diverse environments. Each image is accompanied by annotation files that identify the sign being performed and specify its location within the image.
-
-#### 1. Sample Image
+| `N_images` | Readable Pascal VOC image files | **4,815** |
+| `N_annotations` | Matched Pascal VOC XML annotation files | **4,815** |
+| `P_manifest` | Core columns in the derived audit manifest | 11 |
+| Class count | Unique NSL labels in the archive label map | **136** |
+≈
 
 The image below shows an individual performing the sign **"accept"** in a classroom environment.
 
@@ -139,6 +135,71 @@ Box area, shape and center position describe the framing of the extracted annota
 This figure compares possible changes to one image. These are demonstrations, not evidence that transformations were applied to the dataset or that any method improves performance. Cropping may remove useful facial or body context.
 
 ![Illustrative preprocessing transformation grid](figures/preprocessing_transformation_grid.png)
+
+### Example Image and Annotation from the Nigerian Sign Language Sign-to-Speech Dataset
+
+The Nigerian Sign Language (NSL) Sign-to-Speech dataset contains images of individuals performing different signs in diverse environments. Each image is accompanied by annotation files that identify the sign being performed and specify its location within the image.
+
+#### 1. Sample Image
+
+The image below shows an individual performing the sign **"accept"** in a classroom environment.
+
+<img width="640" height="480" alt="Nigerian Sign Language - accept" src="https://github.com/user-attachments/assets/09cb63bb-d4b6-4a59-ae4c-cb1ceae49dd2" />
+
+#### 2. Corresponding PASCAL VOC (XML) Annotation
+
+Each image has a corresponding XML annotation file in PASCAL VOC format. The annotation provides information about the image dimensions, the sign class, and the bounding-box coordinates identifying the region associated with the sign.
+
+For the image above, the corresponding annotation is:
+
+```xml
+<annotation>
+    <folder>XML</folder>
+    <filename>accept_0f05c0f8-16e2-11ec-a3b7-d8fc93b4157c.jpg</filename>
+    <path>/home/lalah/sign_dataset/dataset/accept_0f05c0f8-16e2-11ec-a3b7-d8fc93b4157c.jpg</path>
+    <source>
+        <database>Unknown</database>
+    </source>
+    <size>
+        <width>640</width>
+        <height>480</height>
+        <depth>3</depth>
+    </size>
+    <segmented>0</segmented>
+    <object>
+        <name>accept</name>
+        <pose>Unspecified</pose>
+        <truncated>0</truncated>
+        <difficult>0</difficult>
+        <bndbox>
+            <xmin>14</xmin>
+            <ymin>274</ymin>
+            <xmax>502</xmax>
+            <ymax>451</ymax>
+        </bndbox>
+    </object>
+</annotation>
+```
+
+#### 3. Understanding the Annotation
+
+The key annotation fields are:
+
+| Field | Description |
+|---|---|
+| `filename` | Name of the corresponding image file |
+| `width`, `height`, `depth` | Image dimensions (640 × 480 pixels, 3 color channels) |
+| `name` | Ground-truth sign class, in this case `accept` |
+| `xmin`, `ymin` | Top-left coordinates of the bounding box |
+| `xmax`, `ymax` | Bottom-right coordinates of the bounding box |
+| `segmented` | Indicates whether the object has a segmentation annotation; `0` means it is not marked as segmented |
+
+In this example, the bounding box extends from **(14, 274)** to **(502, 451)**, identifying the region associated with the sign "accept".
+
+**Observation:** Although the image contains multiple individuals and background objects, the annotation identifies only the target sign region. The bounding box does not isolate the entire signer or remove background elements. It is also important to note that each image and its corresponding XML annotation file share the same filename, differing only in their file extensions (`.jpg` for the image and `.xml` for the annotation). This naming convention makes it easy to associate each image with its corresponding annotation.
+
+This distinction is important when examining the raw dataset and considering preprocessing techniques such as signer cropping, background removal, or person segmentation.
+
 
 ### A2. Variable inventory and data types
 
