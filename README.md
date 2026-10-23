@@ -17,8 +17,8 @@ The supplied `reference-original.zip` was inspected as a baseline implementation
 
 | Audit quantity | Definition | Phase 1 value |
 |---|---|---|
-| `N_images` | Readable Pascal VOC image files | **4,929** |
-| `N_annotations` | Matched Pascal VOC XML annotation files | **4,929** |
+| `N_images` | Readable Pascal VOC image files | **4,815** |
+| `N_annotations` | Matched Pascal VOC XML annotation files | **4,815** |
 | `P_manifest` | Core columns in the derived audit manifest | 11 |
 | Class count | Unique NSL labels in the archive label map | **136** |
 | Image tensor | Pixels supplied to YOLO26 | 640 × 480 × 3 raw; 640 × 640 × 3 after letterboxing |
