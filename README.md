@@ -1,5 +1,4 @@
-# Phase 1: Preprocessing and Feature-Engineering Strategy
-## Nigerian Sign Language Sign-to-Speech Using YOLO26
+# Nigerian Sign Language Sign-to-Speech Using YOLO26
 
 ## Contents
 
