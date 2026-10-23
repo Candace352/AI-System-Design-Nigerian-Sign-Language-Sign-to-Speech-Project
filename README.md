@@ -148,6 +148,18 @@ The notebook reports 4,815 images across 137 folder-derived class names, with 4â
 
 ![Distribution of images across sign classes](figures/class_distribution_all_137.png)
 
+### Class distribution (Top 20 Most Represented NSL Signs)
+The notebook reports the top 20 most signed words/phrases/letters
+![Distribution of images across sign classes](figures/extra_top20_signs.png)
+
+### Class distribution (Bottom 20 Most Represented NSL Signs)
+The notebook reports the top 20 most signed words/phrases/letters
+![Distribution of images across sign classes](figures/extra_bottom20_signs.png)
+
+The notebook reports 4,815 images across 137 folder-derived class names, with 4â€“65 images per class. This uneven representation is important when designing splits and interpreting per-class results.
+
+![Distribution of images across sign classes](figures/class_distribution_all_137.png)
+
 ### Annotation coverage and quality
 
 The notebook reports 4,814 images with a geometrically valid extracted box and one image with an empty annotation. This checks coordinate validity, not whether a box encloses the correct sign. The flagged annotation needs review.
