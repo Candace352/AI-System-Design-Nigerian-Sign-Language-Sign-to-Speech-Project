@@ -3,18 +3,11 @@
 
 ## Project Overview
 
-This project investigates the use of YOLO26 for recognizing Nigerian Sign Language (NSL) signs and converting recognized signs into speech.
+This project investigates the use of YOLO26 for recognizing Nigerian Sign Language (NSL) signs and converting recognized signs into speech. The system aims to reduce communication barriers between individuals who use Nigerian Sign Language and people who may not understand it. The project builds upon the work of Kolawole et al. (2021), *Sign-to-Speech Model for Sign Language Understanding: A Case Study of Nigerian Sign Language*, which introduced an NSL image dataset and evaluated YOLOv5, SSD, and MobileNetV2 approaches.
 
-The system aims to reduce communication barriers between individuals who use Nigerian Sign Language and people who may not understand it.
-
-The project builds upon the work of Kolawole et al. (2021), *Sign-to-Speech Model for Sign Language Understanding: A Case Study of Nigerian Sign Language*, which introduced an NSL image dataset and evaluated YOLOv5, SSD, and MobileNetV2 approaches.
-
-The proposed system uses YOLO26 for sign detection and classification, followed by a confidence-based prediction mechanism and text-to-speech synthesis.
-
-A central focus of this project is investigating how different image preprocessing strategies affect sign recognition performance.
+The proposed system uses YOLO26 for sign detection and classification, followed by a confidence-based prediction mechanism and text-to-speech synthesis. A central focus of this project is investigating how different image preprocessing strategies affect sign recognition performance.
 
 Three input representations will be compared:
-
 1. Original images with backgrounds preserved.
 2. Images with the target signer isolated and the background removed.
 3. Images cropped around annotated signing regions.
