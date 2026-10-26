@@ -14,8 +14,6 @@ Three input representations will be compared:
 
 The objective is to establish whether background information, background removal, or sign-region cropping provides the most effective image representation for NSL recognition.
 
-**Project status:** Exploratory data analysis is substantially complete. Data cleaning, preprocessing experiments, YOLO26 training, and evaluation are ongoing or planned.
-
 ---
 
 ## Table of Contents
