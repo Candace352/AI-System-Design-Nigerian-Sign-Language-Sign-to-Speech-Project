@@ -308,19 +308,18 @@ YOLO26 requires correctly associated class labels and bounding boxes for supervi
 
 **Status:** Initial audit completed; cause of the extraction discrepancy requires confirmation.
 
-## 3.4 Finding 3: Image Dimensions
 
-The raw dataset uses images measuring 640 × 480 pixels.
+### Finding 3: Image Dimensions
 
-The planned YOLO26 input size is 640 × 640 pixels.
+The raw dataset contains images with a resolution of 640 × 480 pixels, while the planned YOLO26 input size is 640 × 640 pixels.
 
 ### Implications
 
-Directly stretching an image to a square shape could distort hand shapes and body proportions. These visual characteristics may be important for distinguishing signs.
+Directly stretching the original images to 640 × 640 would distort their aspect ratio, potentially affecting important hand shapes and body proportions.
 
 ### Proposed Decision
 
-Use aspect-ratio-preserving letterboxing to prepare images for YOLO26. Bounding boxes must be transformed consistently with any geometric image transformation.
+Use aspect-ratio-preserving letterboxing. Since the original images are already 640 pixels wide, the image content can remain at 640 × 480, with 80 pixels of padding added to the top and bottom to produce a 640 × 640 input. Bounding-box coordinates will be adjusted to account for the added padding.
 
 **Status:** Image dimensions verified; letterboxing selected for the planned training pipeline.
 
