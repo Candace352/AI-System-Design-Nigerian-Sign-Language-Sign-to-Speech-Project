@@ -229,7 +229,7 @@ These demonstrations are not evidence that a transformation improves recognition
 
 ---
 
-# 3. Phase 2: EDA Findings and Strategy vs. Reality Audit
+# 3. EDA Findings and Strategy vs. Reality Audit
 
 ## 3.1 Overview
 
