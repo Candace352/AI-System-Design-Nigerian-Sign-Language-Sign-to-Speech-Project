@@ -1,72 +1,144 @@
+
 # Nigerian Sign Language Sign-to-Speech Using YOLO26
 
-## Contents
+## Project Overview
 
-- [Dataset and problem audit](#a-dataset-and-problem-audit)
-- [Raw-data visual diagnostics](#raw-data-visual-diagnostics)
-- [Cleaning, imputation, outliers, and association strategy](#b-cleaning-imputation-outliers-and-association-strategy)
-- [Encoding, scaling, transformation, and partition strategy](#c-encoding-scaling-transformation-and-partition-strategy)
-- [Original implementation and proposed improvements](#d-audit-of-the-supplied-original-implementation-and-proposed-improvements)
-- [Reproducibility and deliverables](#reproducibility-and-deliverables)
-- [References](#references)
+This project investigates the use of YOLO26 for recognizing Nigerian Sign Language (NSL) signs and converting recognized signs into speech.
 
-### Scope note: adapting the rubric to computer vision
+The system aims to reduce communication barriers between individuals who use Nigerian Sign Language and people who may not understand it.
 
-This is a multi-class **object-detection** project, not a tabular prediction problem. The model consumes image pixels and predicts a sign class and bounding box. Therefore, tabular-only methods—such as Pearson screening of raw pixels, VIF, ordinal encoding of class labels, mean/median imputation, and `StandardScaler`—are not applied to the image tensor. Computer-vision controls include annotation validation, image-quality checks, class-balance analysis, duplicate detection, and leakage-safe dataset partitioning. Results below distinguish completed checks from planned work.
+The project builds upon the work of Kolawole et al. (2021), *Sign-to-Speech Model for Sign Language Understanding: A Case Study of Nigerian Sign Language*, which introduced an NSL image dataset and evaluated YOLOv5, SSD, and MobileNetV2 approaches.
 
-## A. Dataset and problem audit
+The proposed system uses YOLO26 for sign detection and classification, followed by a confidence-based prediction mechanism and text-to-speech synthesis.
 
-### A1. Dataset dimensions and unit of analysis
+A central focus of this project is investigating how different image preprocessing strategies affect sign recognition performance.
 
-The source dataset is the [Lanfrica/Hugging Face Nigerian Sign Language dataset](https://huggingface.co/datasets/Lanfrica/sign-to-speech-for-sign-language-understanding-a-case-study-of-nigerian-sign-language), associated with Kolawole et al. (2021). Its public description reports approximately 5,000 cleaned images covering 137 signs, words/phrases, and alphabet labels.
+Three input representations will be compared:
 
-The primary observation is one annotated RGB image containing an isolated sign. The modelling tensor for each observation is an image resized with aspect-ratio-preserving letterboxing to **640 × 640 × 3**. The raw image collection is not naturally a two-dimensional table, so an audit manifest will be constructed with one row per annotated image/object.
+1. Original images with backgrounds preserved.
+2. Images with the target signer isolated and the background removed.
+3. Images cropped around annotated signing regions.
 
-The reference implementation was inspected separately from the downloaded image dataset. The diagnostics below use `dataset/images` and `dataset/annotations/PASCAL_VOC`; the separate `dataset_YOLO` and root-level `train`/`test` layouts have not been reconciled with these counts.
+The objective is to establish whether background information, background removal, or sign-region cropping provides the most effective image representation for NSL recognition.
 
-| Audit quantity | Definition | Phase 1 value |
-|---|---|---|
-| `N_images` | Indexed images in `dataset/images` | **4,815** |
-| `N_annotations` | XML files in the inspected annotations folder | **4,815** |
-| Class count | Distinct image-folder names in the notebook | **137** |
-| Valid boxes | Images with at least one geometrically valid extracted box | **4,814** |
-| Image tensor | Raw image dimensions; planned letterboxed model input | 640 × 480 × 3 raw; 640 × 640 × 3 after letterboxing |
+**Project status:** Exploratory data analysis is substantially complete. Data cleaning, preprocessing experiments, YOLO26 training, and evaluation are ongoing or planned.
 
-### Example Image and Annotation from the Nigerian Sign Language Sign-to-Speech Dataset
+---
 
-The Nigerian Sign Language (NSL) Sign-to-Speech dataset contains images of individuals performing different signs in diverse environments. Each image is accompanied by annotation files that identify the sign being performed and specify its location within the image.
+## Table of Contents
 
-#### 1. Sample Image
+1. [Dataset Overview and Audit](#1-dataset-overview-and-audit)
+2. [Raw-Data Visual Diagnostics](#2-raw-data-visual-diagnostics)
+3. [Phase 2: EDA Findings and Strategy vs. Reality Audit](#3-phase-2-eda-findings-and-strategy-vs-reality-audit)
+4. [Data Cleaning and Preprocessing Pipeline](#4-data-cleaning-and-preprocessing-pipeline)
+5. [Comparative Preprocessing Experiments](#5-comparative-preprocessing-experiments)
+6. [Original Baseline and Proposed System](#6-original-baseline-and-proposed-system)
+7. [Training and Evaluation Strategy](#7-training-and-evaluation-strategy)
+8. [Sign-to-Speech Reliability](#8-sign-to-speech-reliability)
+9. [Reproducibility and Remaining Work](#9-reproducibility-and-remaining-work)
+10. [References](#10-references)
 
-The image below shows an individual performing the sign **"accept"** in a classroom environment.
+---
+
+# 1. Dataset Overview and Audit
+
+## 1.1 Dataset Description
+
+The dataset used in this project is the [Nigerian Sign Language Sign-to-Speech Dataset](https://huggingface.co/datasets/Lanfrica/sign-to-speech-for-sign-language-understanding-a-case-study-of-nigerian-sign-language), associated with Kolawole et al. (2021).
+
+The original study reports approximately 5,000 cleaned images representing 137 Nigerian Sign Language classes, including alphabet signs, words, and phrases.
+
+The images capture individuals performing signs in different environments, with variations in lighting, backgrounds, signer appearance, and camera framing.
+
+The dataset contains images and corresponding object-detection annotations in PASCAL VOC and YOLO formats.
+
+The primary task is **multi-class object detection**, where the model predicts:
+
+- The sign class being performed.
+- A bounding box localizing the signing region.
+- A confidence score for the prediction.
+
+Unlike conventional tabular prediction tasks, the primary input consists of RGB image pixels. Numerical image and annotation features are extracted for exploratory analysis, but the YOLO26 detector learns representations directly from images.
+
+## 1.2 Dataset Statistics
+
+The initial dataset indexing and annotation audit produced the following results:
+
+| Metric | Observed Value |
+|---|---|
+| Total images | 4,815 |
+| Total XML annotation files | 4,815 |
+| Number of sign classes | 137 |
+| Images with valid extracted bounding boxes | 4,814 |
+| Images without a valid extracted box | 1 |
+| Bounding-box extraction coverage | 99.98% |
+| Raw image dimensions | 640 × 480 pixels |
+| Planned YOLO26 input | 640 × 640 pixels |
+| Minimum images per class | 4 |
+| Maximum images per class | 65 |
+| Class imbalance ratio | 16.25:1 |
+
+These counts describe the inspected `dataset/images` and PASCAL VOC annotation collection.
+
+Although all 4,815 images have corresponding XML files, one image did not produce a valid bounding box during the initial extraction process.
+
+The reason for this discrepancy must be verified before excluding or repairing the image.
+
+## 1.3 Dataset Structure
+
+The inspected source collection is organized as follows:
+
+```text
+dataset/
+├── images/
+│   ├── A/
+│   ├── accept/
+│   ├── ...
+│   └── other sign classes/
+│
+└── annotations/
+    ├── PASCAL_VOC/
+    │   ├── A_....xml
+    │   ├── accept_....xml
+    │   └── ...
+    │
+    └── YOLO/
+        ├── A_....txt
+        ├── accept_....txt
+        └── ...
+```
+
+The images are organized into folders corresponding to their sign classes, while the annotation files provide class labels and bounding-box coordinates.
+
+The source archive may also include other train/test or YOLO directory layouts. These are not assumed to be equivalent to the inspected collection until their contents and class mappings are reconciled.
+
+## 1.4 Example Image and Annotation
+
+### Sample Image
+
+The following image shows an individual performing the sign labeled **"accept"** in a classroom environment.
 
 <img width="640" height="480" alt="Nigerian Sign Language - accept" src="https://github.com/user-attachments/assets/09cb63bb-d4b6-4a59-ae4c-cb1ceae49dd2" />
 
-#### 2. Corresponding PASCAL VOC (XML) Annotation
+### Corresponding PASCAL VOC Annotation
 
-Each image has a corresponding XML annotation file in PASCAL VOC format. The annotation provides information about the image dimensions, the sign class, and the bounding-box coordinates identifying the region associated with the sign.
-
-For the image above, the corresponding annotation is:
+The image is accompanied by an XML annotation containing the ground-truth sign class and bounding-box coordinates.
 
 ```xml
 <annotation>
-    <folder>XML</folder>
     <filename>accept_0f05c0f8-16e2-11ec-a3b7-d8fc93b4157c.jpg</filename>
-    <path>/home/lalah/sign_dataset/dataset/accept_0f05c0f8-16e2-11ec-a3b7-d8fc93b4157c.jpg</path>
-    <source>
-        <database>Unknown</database>
-    </source>
+
     <size>
         <width>640</width>
         <height>480</height>
         <depth>3</depth>
     </size>
+
     <segmented>0</segmented>
+
     <object>
         <name>accept</name>
-        <pose>Unspecified</pose>
-        <truncated>0</truncated>
-        <difficult>0</difficult>
+
         <bndbox>
             <xmin>14</xmin>
             <ymin>274</ymin>
@@ -77,226 +149,726 @@ For the image above, the corresponding annotation is:
 </annotation>
 ```
 
-#### 3. Understanding the Annotation
-
-The key annotation fields are:
+The annotation identifies:
 
 | Field | Description |
 |---|---|
-| `filename` | Name of the corresponding image file |
-| `width`, `height`, `depth` | Image dimensions (640 × 480 pixels, 3 color channels) |
-| `name` | Ground-truth sign class, in this case `accept` |
-| `xmin`, `ymin` | Top-left coordinates of the bounding box |
-| `xmax`, `ymax` | Bottom-right coordinates of the bounding box |
-| `segmented` | Indicates whether the object has a segmentation annotation; `0` means it is not marked as segmented |
+| `filename` | Corresponding image filename |
+| `width`, `height`, `depth` | Image dimensions and number of channels |
+| `name` | Ground-truth sign class |
+| `xmin`, `ymin` | Top-left bounding-box coordinates |
+| `xmax`, `ymax` | Bottom-right bounding-box coordinates |
+| `segmented` | Whether segmentation information is indicated |
 
-In this example, the bounding box extends from **(14, 274)** to **(502, 451)**, identifying the region associated with the sign "accept".
+In this example, the signing region is annotated from `(14, 274)` to `(502, 451)`.
 
-**Observation:** Although the image contains multiple individuals and background objects, the annotation identifies only the target sign region. The bounding box does not isolate the entire signer or remove background elements. It is also important to note that each image and its corresponding XML annotation file share the same filename, differing only in their file extensions (`.jpg` for the image and `.xml` for the annotation). This naming convention makes it easy to associate each image with its corresponding annotation.
+**Observation:** The image includes additional people and classroom objects, but the annotation identifies only the target signing region.
 
-This distinction is important when examining the raw dataset and considering preprocessing techniques such as signer cropping, background removal, or person segmentation.
+The dataset does not provide full-person segmentation masks. Therefore, isolating the target signer requires additional preprocessing beyond the existing XML annotations.
 
+---
 
-### A2. Variable inventory and data types
+# 2. Raw-Data Visual Diagnostics
 
-| Variable | Type | Role and treatment |
-|---|---|---|
-| Image pixels | Continuous bounded numeric, 0–255 | Main model input; converted by the YOLO pipeline to floating-point values in [0, 1] |
-| Image width, height, channels | Discrete numeric | Audit only; expected positive dimensions and three channels |
-| `x_center`, `y_center`, `box_width`, `box_height` | Continuous bounded numeric, 0–1 in YOLO format | Ground-truth detection target; validate range and geometry |
-| `class_name` | Nominal categorical text | Human-readable target label |
-| `class_id` | Nominal categorical integer | YOLO target identifier; integer values do **not** carry rank or magnitude |
-| File path / image ID | Text / identifier | Traceability and duplicate/leakage checks; never a model feature |
-| Signer/session/background/lighting, if supplied | Nominal categorical | Audit and group-splitting variables; never a main model feature |
-| Timestamp, if supplied | Datetime | Audit only; no temporal split is planned unless it reveals data-collection leakage |
+Exploratory data analysis was conducted to examine the dataset's composition, image characteristics, annotation quality, visual variation, and potential modeling challenges.
 
-There are no ordinal predictors in the primary detector. In particular, NSL class IDs must **not** be ordinal encoded: `class_id=20` is merely a label identifier and is not greater than `class_id=4` in any mathematical sense.
+The figures in this section describe the raw dataset before model training.
 
-### A3. Baseline missingness and annotation-integrity audit
+They do not represent YOLO26 performance results.
 
-Before cleaning, the audit script will report the following, both as counts and percentages:
+## 2.1 Representative Class Image Grid
 
-1. Missing/unreadable image files, zero-byte files, and non-RGB or invalid dimensions.
-2. Images with no matching label file; label files with no matching image; empty label files.
-3. Missing, non-numeric, out-of-range, or geometrically invalid bounding-box values.
-4. Missing class names/IDs or IDs outside the class map.
-5. Missing signer/session/background/lighting metadata, if such fields exist.
-6. Complete image–annotation pairs versus rows with one or more integrity failure.
+This visualization displays images from different NSL classes.
 
-The overall missingness rate will be reported as: `number of failed required image/annotation fields ÷ number of required fields inspected`. Metadata missingness will be reported separately so that absent optional metadata is not confused with a missing training label.
+It provides an overview of variation in sign appearance, signer characteristics, background environments, lighting, and camera framing.
 
-### A4. Target specification and class balance
+![Representative NSL Sign Images](figures/representative_class_image_grid.png)
 
-The task is **multi-class object detection**, comprising (1) nominal classification of the NSL sign and (2) bounding-box localisation. It is not regression or ordinary image classification. The target is each valid pair of `class_id` and bounding box.
+**Purpose:** Understand visual diversity across different sign classes.
 
-Class balance will be audited with class counts, percentage share, minimum/median/maximum examples per class, and imbalance ratio `largest class count ÷ smallest class count`. The initial strategy is to preserve all valid minority-class images, stratify splits by class where feasible, and use conservative training-only augmentation. No synthetic labels will be created. If a class has too few examples for all three splits, that class will be reported as an evaluation limitation and a targeted consented data collection will be preferred over duplicating it into the test set.
+## 2.2 Class Distribution
 
-## Raw-data visual diagnostics
+The class-distribution plot shows the number of images available for each of the 137 sign classes.
 
-These figures describe the inspected `dataset/images` and Pascal VOC annotations before cleaning. They are exploratory, not results from a trained YOLO model. Folder-derived sign names and the first valid extracted box per image are subject to the notebook's checks and limitations.
+![NSL Class Distribution](figures/class_distribution_all_137.png)
 
-### Representative sign images
+The distribution reveals that some classes contain substantially more examples than others.
 
-Examples from different class folders illustrate variation in sign appearance, backgrounds and lighting. The grid is illustrative rather than a measurement of background robustness.
+### Top 20 Most Represented Signs
 
-![Representative images across NSL sign classes](figures/representative_class_image_grid.png)
+![Top 20 NSL Signs](figures/extra_top20_signs.png)
 
-### Class distribution
+This figure highlights the sign classes with the highest image counts.
 
-The notebook reports 4,815 images across 137 folder-derived class names, with 4–65 images per class. This uneven representation is important when designing splits and interpreting per-class results.
+### Bottom 20 Least Represented Signs
 
-![Distribution of images across sign classes](figures/class_distribution_all_137.png)
+![Bottom 20 NSL Signs](figures/extra_bottom20_signs.png)
 
-#### b. Class distribution (Top 20 Most Represented NSL Signs)
-The notebook reports the top 20 most signed words/phrases/letters
-![Distribution of images across sign classes](figures/extra_top20_signs.png)
+This figure identifies sign classes with comparatively few training examples.
 
-#### c. Class distribution (Bottom 20 Most Represented NSL Signs)
-The notebook reports the bottom 20 most signed words/phrases/letters
-![Distribution of images across sign classes](figures/extra_bottom20_signs.png)
+**Purpose:** Identify class imbalance and determine whether minority classes require additional attention during data splitting and training.
 
+## 2.3 Annotation Coverage and Quality
 
-### Annotation coverage and quality
+This visualization examines the availability and structural validity of the dataset's bounding-box annotations.
 
-The notebook reports 4,814 images with a geometrically valid extracted box and one image with an empty annotation. This checks coordinate validity, not whether a box encloses the correct sign. The flagged annotation needs review.
+![Annotation Coverage](figures/annotation_coverage_quality.png)
 
-![Annotation coverage and quality](figures/annotation_coverage_quality.png)
+The initial audit identified 4,814 images with valid extracted bounding boxes out of 4,815 images.
 
-### Image dimensions
+The remaining image requires further annotation inspection.
 
-The notebook reports one image resolution, 640 × 480 pixels, in this inspected image collection. This is the raw image size, not the 640 × 640 model input planned for letterboxing.
+**Purpose:** Identify missing, empty, malformed, or geometrically invalid annotations before model training.
 
-![Distribution of image dimensions](figures/image_dimensions.png)
+## 2.4 Image Dimensions
 
-### Bounding-box characteristics
+This visualization examines the resolutions of the original images.
 
-Box area, shape and center position describe the framing of the extracted annotations. The notebook reports a median area of 12.6% of the image; it uses at most one valid box per image, so the plot is not an inventory of every object annotation.
+![Image Dimensions](figures/image_dimensions.png)
 
-![Bounding-box area, aspect ratio and positions](figures/bounding_box_analysis.png)
+The inspected images have a resolution of 640 × 480 pixels, corresponding to an aspect ratio of 4:3.
 
-### Illustrative preprocessing transformations
+**Purpose:** Determine whether image dimensions are consistent and identify the transformations required for the YOLO26 input format.
 
-This figure compares possible changes to one image. These are demonstrations, not evidence that transformations were applied to the dataset or that any method improves performance. Cropping may remove useful facial or body context.
+## 2.5 Bounding-Box Analysis
 
-![Illustrative preprocessing transformation grid](figures/preprocessing_transformation_grid.png)
+This visualization examines bounding-box area, aspect ratio, and spatial distribution.
 
-## B. Cleaning, imputation, outliers, and association strategy
+![Bounding Box Analysis](figures/bounding_box_analysis.png)
 
-### B1. Missingness mechanisms and treatment
+The initial analysis reported a median bounding-box area of approximately 12.6% of the image.
 
-Missingness will be diagnosed from the audit rather than assumed:
+The visualization helps characterize variation in the size, shape, and position of annotated signing regions.
 
-| Situation | Provisional mechanism | Decision |
-|---|---|---|
-| Random file-transfer corruption affecting scattered files | Potential MCAR | Exclude unreadable files; log IDs and counts |
-| Annotation/image failures concentrated in a collection session, signer, device, or background | Potential MAR | Investigate the observed grouping; report the affected subgroup and do not impute labels |
-| Labels missing because difficult, ambiguous, or privacy-sensitive examples were omitted | Potential MNAR / unknown | Do not infer labels; quarantine and document potential selection bias |
-| Missing optional signer or environment metadata | Unknown; may be MAR | Keep as `unknown` for audit reporting; do not fabricate group membership |
+**Purpose:** Understand spatial characteristics of signs and identify potentially unusual annotations requiring inspection.
 
-Images and labels are not imputed. A missing image cannot be meaningfully replaced by a mean image, and a missing sign label cannot be inferred without introducing label noise. A required image/annotation pair that fails validation will be excluded from training, validation, and testing with a reproducible exclusion log. Optional metadata is retained as missing/unknown and is not used as an input feature.
+## 2.6 Preprocessing Transformation Grid
 
-### B2. Image and annotation outlier protocol
+The transformation grid compares an original image against several illustrative preprocessing operations.
 
-Outlier checks will flag records for review, not automatically delete valid examples solely because they are unusual. The following deterministic rules will be applied:
+![Preprocessing Transformation Grid](figures/preprocessing_transformation_grid.png)
 
-| Check | Rule | Treatment |
-|---|---|---|
-| File validity | Image cannot be decoded, has zero width/height, or is not RGB after conversion | Exclude and log; no usable input exists |
-| Bounding-box validity | `0 < width,height ≤ 1`; centre coordinates are in [0,1]; all box edges lie within image bounds | Repair only if a documented format conversion caused the error; otherwise exclude and log |
-| Box geometry | Compute normalised box area and aspect ratio; flag values outside `Q1 − 1.5×IQR` to `Q3 + 1.5×IQR` | Visually inspect; retain plausible small/large signs because they represent real deployment conditions |
-| Image exposure/blur | Flag luminance and blur scores outside 1.5×IQR; blur is measured by variance of the Laplacian | Visually inspect; retain realistic low-light or slightly blurred images unless the sign is not interpretable |
-| Exact duplicates | SHA-256 hash match | Keep only one identical copy if labels agree; quarantine conflicting duplicates |
-| Near duplicates | Perceptual hash distance threshold selected after audit | Place all members of a duplicate cluster in the same split; do not allow them to leak across splits |
+Example transformations include resizing, brightness adjustment, contrast enhancement, sharpening, and cropping.
 
-The tabular Z-score rule (`|z| > 3`) is not the primary rule because box sizes, aspect ratios, brightness, and blur measures are expected to be skewed. IQR is more robust for these audit measures. No winsorisation/capping will be applied to image pixels or bounding-box labels: clipping would alter the visual evidence or move the true target. Valid extreme observations are retained; only objectively invalid files/annotations are removed.
+**Purpose:** Examine how preprocessing changes image appearance and whether important signing information is preserved.
 
-### B3. Statistical association and multicollinearity protocol
+These demonstrations are not evidence that a transformation improves recognition performance.
 
-Raw image pixels are high-dimensional spatial inputs, so pairwise Pearson correlation and VIF are not meaningful feature-selection tools for YOLO26. The detector learns visual features directly from the image. The following audit associations will instead be used to identify dataset bias and potential leakage:
+---
 
-| Audit relationship | Variable types | Diagnostic |
-|---|---|---|
-| Class label vs. box area/aspect ratio | Nominal vs. continuous | Kruskal–Wallis test plus descriptive distributions; used to identify class-specific framing bias |
-| Class label vs. signer/background/session, if available | Nominal vs. nominal | Chi-square test and Cramér’s V; used to identify confounding/coverage gaps |
-| Class label vs. brightness/blur category | Nominal vs. categorical/continuous | Chi-square or Kruskal–Wallis; used to identify acquisition-condition bias |
-| Exact/near-duplicate cluster vs. dataset split | Identifier vs. split | Must be zero cross-split clusters; leakage check rather than a significance test |
+# 3. Phase 2: EDA Findings and Strategy vs. Reality Audit
 
-These diagnostics are descriptive quality-control tests, not a basis for dropping visual information from the detector. If a later auxiliary **tabular** model is built from engineered metadata, only then will the following classical protocol apply: screen numeric features with `|r| ≥ 0.85`; calculate VIF after one-hot encoding; flag `VIF > 10`; and drop the feature with lower domain relevance, higher missingness, weaker target association, or redundant derivation. This protocol is not applied to raw image pixels or YOLO targets.
+## 3.1 Overview
 
-## C. Encoding, scaling, transformation, and partition strategy
+Phase 2 evaluates the preprocessing strategy proposed in Phase 1 against the characteristics observed in the actual NSL dataset.
 
-### C1. Encoding and scaling
+The objective is to identify data-quality issues, determine their potential impact on YOLO26 training, and justify any changes to the original preprocessing plan.
 
-**Label encoding.** The class map will convert each NSL sign name to one integer `class_id` required by YOLO annotation files. This is nominal label indexing, not ordinal encoding. The map will be stored in version-controlled YAML and used identically in every split.
+The main findings concern:
 
-**Bounding-box transformation.** Bounding boxes will use YOLO's normalised format: `class_id x_center y_center width height`, where coordinates and dimensions are in [0,1]. Conversion from any source format will be unit-tested using image-boundary checks.
+- Class imbalance.
+- Annotation completeness.
+- Image dimensions.
+- Bounding-box characteristics.
+- Background complexity and signer variation.
 
-**Pixel scaling.** Images are read as 0–255 RGB values, letterboxed to 640×640 while preserving aspect ratio, and scaled to [0,1] by the YOLO26 preprocessing pipeline. `StandardScaler` is not appropriate because pixels are not independent Gaussian tabular variables, and per-dataset standardisation could conflict with the pretrained YOLO26 input pipeline. No additional MinMaxScaler will be fitted from validation or test data.
+These findings motivate the data-cleaning pipeline and comparative preprocessing experiments described in subsequent sections.
 
-**Training-only augmentation.** After splitting, safe augmentations may include modest brightness/contrast/HSV variation, scale, and translation to improve robustness. Horizontal flipping will be disabled unless an NSL expert verifies that it cannot change the meaning of any included sign. Validation and test data receive only deterministic resize/letterbox preprocessing; they are never augmented.
+## 3.2 Finding 1: Class Imbalance
 
-### C2. Split and leakage-prevention design
+The dataset contains 137 sign classes, but the number of images per class is uneven.
 
-The planned split is **70% training, 15% validation, and 15% test**. With approximately 5,000 images, this preserves roughly 3,500 training images for fine-tuning while reserving about 750 examples each for model selection and one final unbiased test. Exact counts will be reported after the audit.
+Some of the most represented signs include:
 
-1. **Stratification:** Maintain sign-class representation across train, validation, and test as far as class frequencies permit. The audit will identify any rare classes that cannot be represented in every partition.
-2. **Group separation:** If signer IDs are available, all images from one signer will be assigned to one partition only. Group separation takes precedence over exact class proportions. If signer IDs are absent, duplicate/near-duplicate clusters and identifiable capture-session folders will be kept intact in one partition. A small external unseen-user test may be added later, with consent, as a robustness evaluation.
-3. **Temporal alignment:** No chronological split is planned because the intended task is not time-series forecasting. Timestamps, if present, will only be inspected to detect collection-session leakage.
-4. **Validation scheme:** YOLO26n and YOLO26s hyperparameters will be selected using the validation set only. The held-out test set remains sealed until the final evaluation. Each candidate configuration will use the same fixed split and seed; the final report will state the seed, split manifest, software version, hardware, and all selected settings. Full K-fold retraining is not planned because training multiple object-detection models is computationally expensive; the fixed validation partition is the internal selection loop.
-5. **Fit isolation:** Dataset-derived choices—duplicate removal, augmentation settings, class-frequency decisions, confidence threshold, and temporal-stability parameters—will be selected using training/validation data only. The final test set will not influence preprocessing, model selection, thresholds, or error-analysis decisions.
+| Sign | Images |
+|---|---:|
+| eat | 65 |
+| sorry | 63 |
+| D | 60 |
+| Y | 59 |
+| G | 58 |
 
-## D. Audit of the supplied original implementation and proposed improvements
+Some of the least represented signs include:
 
-### D1. Evidence from `reference-original.zip`
+| Sign | Images |
+|---|---:|
+| love | 4 |
+| nice to meet you | 8 |
+| alphabet | 9 |
+| you | 11 |
+| form | 12 |
 
-The archive makes the original baseline sufficiently concrete to reproduce its *design intent* without treating its results as a directly comparable experiment:
+The class imbalance ratio is:
 
-| Baseline element | Evidence in archive | Implication for this project |
-|---|---|---|
-| Detector | `savedmodels_configs/yolo_model/opt.yaml` specifies `model: yolov5m` and `weights: yolov5m.pt` | YOLO26n and YOLO26s replace YOLOv5m as modern detector candidates |
-| Input | `img_size: [640, 640]` | Retain 640×640 as the initial input size so that the new detector is assessed on a comparable image scale |
-| Training budget | `epochs: 150`, `batch_size: 16`, eight workers | Start with a documented YOLO26 budget; report any necessary hardware-driven differences rather than hiding them |
-| Class space | `nc: 137` and an explicit 137-name label list in `opt.yaml` | Preserve the original class-map ordering after confirming it matches the downloaded annotations |
-| Original partitions | `train: dataset_YOLO/train`; `val: dataset_YOLO/test` | The original configuration has no separate validation partition. The proposed 70/15/15 split separates model selection from final testing |
-| Reported final epoch | Epoch 149/149 log: precision 0.8057, recall 0.9512, mAP50 0.9533, mAP50-95 0.6439 | Use only as a historical reference; a direct comparison requires the same raw split, preprocessing, hardware, and evaluation code |
-| Original augmentation | Hue/saturation/value adjustment, translation 0.1, scale 0.5, mosaic 1.0, and horizontal flip probability 0.5 | Re-evaluate all augmentation for NSL semantics; specifically, disable horizontal flipping unless an NSL expert confirms it preserves every label’s meaning |
-| Live deployment | `livefeed_detection.py` resizes webcam images to width 400, submits every frame to a local DeepStack endpoint, and uses `pyttsx3` | The new system will run local YOLO26 inference and report end-to-end latency; the 400-pixel network-client path is not carried forward blindly |
-| Speech policy | The original client speaks whenever a non-empty top detection is returned | The confidence-plus-temporal-stability layer is a defined system contribution: it reduces repetitive and low-confidence speech |
+\[
+\text{Imbalance Ratio} = \frac{65}{4} = 16.25
+\]
 
-### D2. Baseline versus proposed system architecture
+### Implications
+
+Classes with more images provide greater opportunities for YOLO26 to learn variations in signing appearance, positioning, and environmental conditions.
+
+Classes with very few images may be more difficult to generalize to unseen examples.
+
+For instance, the class `love` contains only four original images. This limits both the amount of independent training information available and the reliability of class-specific evaluation.
+
+However, class imbalance alone does not prove that the model will perform poorly on minority classes. Its actual impact must be assessed through model evaluation.
+
+### Proposed Decision
+
+- Preserve all valid minority-class images.
+- Investigate class-aware sampling strategies compatible with YOLO26.
+- Apply conservative, meaning-preserving training augmentation.
+- Avoid creating augmented copies before dataset partitioning.
+- Investigate additional data collection for extremely rare classes.
+- Report per-class performance rather than relying only on aggregate detection metrics.
+
+Augmentation will not be treated as a replacement for independent training examples.
+
+**Status:** Class imbalance identified; mitigation strategies remain to be implemented and evaluated.
+
+## 3.3 Finding 2: Annotation Completeness
+
+The audit identified 4,815 images and 4,815 matching XML annotation files.
+
+However, valid bounding boxes were extracted for 4,814 images.
+
+### Implications
+
+YOLO26 requires correctly associated class labels and bounding boxes for supervised object-detection training.
+
+An annotation file may exist without containing a usable bounding box, or a parser may fail to extract its contents.
+
+Invalid annotations could introduce incorrect supervision or training failures.
+
+### Proposed Decision
+
+- Inspect the affected image and XML annotation.
+- Determine whether the issue is an empty annotation, malformed coordinates, or an extraction error.
+- Repair the annotation only if correct values can be established.
+- Otherwise, exclude the affected image from supervised training and document the decision.
+- Preserve the original annotations for reproducibility.
+
+**Status:** Initial audit completed; cause of the extraction discrepancy requires confirmation.
+
+## 3.4 Finding 3: Image Dimensions
+
+The raw dataset uses images measuring 640 × 480 pixels.
+
+The planned YOLO26 input size is 640 × 640 pixels.
+
+### Implications
+
+Directly stretching an image to a square shape could distort hand shapes and body proportions.
+
+These visual characteristics may be important for distinguishing signs.
+
+### Proposed Decision
+
+Use aspect-ratio-preserving letterboxing to prepare images for YOLO26.
+
+Bounding boxes must be transformed consistently with any geometric image transformation.
+
+**Status:** Image dimensions verified; letterboxing selected for the planned training pipeline.
+
+## 3.5 Finding 4: Bounding-Box Characteristics
+
+The bounding-box analysis reveals variation in the spatial extent and position of annotated sign regions.
+
+Some signs may require broader body context, while others may involve smaller regions around the hands.
+
+### Implications
+
+Very small signing regions may contain limited visual detail, while larger boxes may include additional environmental information.
+
+Unusual box dimensions do not necessarily imply annotation errors.
+
+### Proposed Decision
+
+- Preserve valid ground-truth bounding boxes.
+- Flag unusual box dimensions for inspection.
+- Avoid automatically removing large or small annotations.
+- Validate coordinates after image resizing or cropping.
+- Retain meaningful visual context when performing signer-focused preprocessing.
+
+**Status:** Bounding-box characteristics analyzed; annotation outlier review remains pending.
+
+## 3.6 Finding 5: Background Complexity and Signer Variation
+
+Representative images reveal variation in background environments, lighting, signer appearance, and camera framing.
+
+Some images contain additional people, classroom furniture, windows, and other background objects.
+
+### Implications
+
+Irrelevant background information may distract the detector or introduce correlations unrelated to the sign being performed.
+
+However, background diversity may also improve robustness to real-world environments.
+
+Removing background elements without careful segmentation could accidentally remove relevant hand, face, or upper-body information.
+
+### Proposed Decision
+
+Rather than selecting one preprocessing strategy in advance, the project will compare three image representations:
+
+1. Original images with backgrounds preserved.
+2. Background-removed images retaining the target signer.
+3. Cropped images focusing on annotated signing regions.
+
+These experiments will investigate whether spatial focus and background modification improve detection performance.
+
+**Status:** Background variation observed; three preprocessing experiments proposed.
+
+---
+
+## 3.7 Strategy vs. Reality Decision Log
+
+The Decision Log documents how Phase 1 preprocessing intentions compare with actual Phase 2 findings and the resulting implementation decisions.
+
+| Area | Phase 1 Strategy | Phase 2 Evidence | Decision or Adjustment | Status |
+|---|---|---|---|---|
+| Dataset size | Audit the original dataset | 4,815 images, 137 classes | Use observed counts rather than approximate paper totals | Completed |
+| Class imbalance | Preserve minority classes; consider augmentation | Class sizes range from 4 to 65 images | Investigate class-aware training and training-only augmentation | Planned |
+| Annotation integrity | Exclude unresolved invalid annotations | 4,815 XML files; 4,814 valid extracted boxes | Investigate affected annotation before repair or exclusion | Pending |
+| Image dimensions | Preserve image proportions | Raw resolution is 640 × 480 | Use 640 × 640 aspect-ratio-preserving letterboxing | Planned |
+| Bounding-box outliers | Flag unusual geometries | Bounding-box analysis completed | Inspect outliers and retain valid extreme cases | Pending |
+| Background variation | Initially preserve original images | Images contain variable backgrounds and additional people | Compare original, background-removed, and cropped inputs | Planned |
+| Dataset splitting | Use 70/15/15 with leakage prevention | Some classes contain only four images | Reassess rare-class coverage and group constraints | Pending |
+| Augmentation | Apply conservative training-only transformations | Class imbalance and visual variation observed | Evaluate safe transformations while avoiding unchecked flipping | Planned |
+
+The main adjustment from Phase 1 is the explicit introduction of three comparative preprocessing configurations.
+
+Instead of treating background removal as an assumed improvement, it will be evaluated experimentally.
+
+The final Phase 2 report will update this log with actual implementation changes, affected sample counts, and resulting evaluation evidence.
+
+---
+
+# 4. Data Cleaning and Preprocessing Pipeline
+
+## 4.1 Annotation Validation
+
+Before training, image–annotation pairs will be validated to identify:
+
+- Missing or unreadable image files.
+- Missing or malformed XML annotations.
+- Empty annotations.
+- Missing or invalid bounding-box coordinates.
+- Coordinates outside image boundaries.
+- Inconsistent class labels.
+- Differences between corresponding XML and YOLO annotations.
+
+Invalid records will be inspected before any exclusion.
+
+Corrections and exclusions will be documented in a reproducible log.
+
+## 4.2 Image Quality and Outlier Handling
+
+Image-quality checks will examine brightness, sharpness, and unusual image characteristics.
+
+Bounding-box outliers will be investigated using area, width, height, and aspect ratio.
+
+The IQR method may be used to flag unusual numerical values.
+
+However, outliers will not be removed automatically because unusual examples may represent valid signing conditions.
+
+Images will be retained when the sign remains interpretable and the annotation is valid.
+
+## 4.3 Class Imbalance Mitigation
+
+To address uneven class representation, the following strategies will be investigated:
+
+- Preserve valid minority-class images.
+- Use conservative training-only augmentation.
+- Evaluate class-aware sampling where supported by the training framework.
+- Maintain the original class distribution in validation and testing where feasible.
+- Report performance separately for individual sign classes.
+- Prefer additional independent data collection for classes with extremely few examples.
+
+The balancing strategy will be kept consistent across the three preprocessing experiments.
+
+This is necessary to isolate the effect of image preprocessing from changes in sample representation.
+
+## 4.4 Image Resizing and Normalization
+
+Images will be prepared using aspect-ratio-preserving letterboxing to the target input size of 640 × 640.
+
+The YOLO26 preprocessing pipeline will convert pixel values to the numerical representation expected by the model.
+
+Geometric transformations will be accompanied by corresponding annotation-coordinate adjustments.
+
+The dataset will not use conventional tabular mean imputation or `StandardScaler` on raw image pixels.
+
+## 4.5 Data Augmentation
+
+Training augmentation may include:
+
+- Modest brightness adjustment.
+- Contrast and HSV variation.
+- Small translations.
+- Controlled scaling.
+- Other transformations verified to preserve sign meaning.
+
+Horizontal flipping will remain disabled unless its semantic validity can be established.
+
+Validation and test images will not receive stochastic training augmentation.
+
+## 4.6 Duplicate Detection and Data Leakage
+
+Exact duplicates will be investigated using file hashing, while perceptual similarity can be used to identify candidate near-duplicates.
+
+Potential duplicate groups will be reviewed before splitting.
+
+Near-identical images must not appear across training, validation, and test partitions.
+
+Where signer or recording-session information is available, it will also be considered during dataset splitting.
+
+---
+
+# 5. Comparative Preprocessing Experiments
+
+## 5.1 Research Objective
+
+The project will investigate the following research question:
+
+**How does image preprocessing—specifically background preservation, background removal, and sign-region cropping—affect YOLO26 detection performance on Nigerian Sign Language signs?**
+
+Three experiments are proposed to compare different input representations while maintaining consistent training and evaluation conditions.
+
+## 5.2 Experiment A: Original Images (Baseline)
+
+The first experiment will train YOLO26 using the original NSL images.
+
+The backgrounds, surrounding objects, and original visual context will be preserved.
+
+### Procedure
+
+- Use the validated original images.
+- Retain ground-truth sign bounding boxes.
+- Apply standard aspect-ratio-preserving input preprocessing.
+- Train YOLO26 with the selected baseline configuration.
+- Evaluate using a fixed validation and test protocol.
+
+### Purpose
+
+Establish baseline recognition and localization performance on the original dataset.
+
+This experiment provides the reference against which background removal and cropping will be compared.
+
+## 5.3 Experiment B: Background-Removed Images
+
+The second experiment will train YOLO26 using images in which the target signer is isolated from the background.
+
+### Procedure
+
+- Identify the target signer.
+- Remove or mask irrelevant background regions.
+- Preserve the face, hands, arms, and relevant upper-body posture.
+- Retain valid sign bounding boxes when the image coordinate system is unchanged.
+- Review segmentation outputs for missing fingers, arms, or other important signing features.
+- Train and evaluate YOLO26 using the corresponding processed images.
+
+### Purpose
+
+Determine whether reducing irrelevant background information improves detection performance.
+
+This experiment will also investigate whether background removal causes the loss of information needed to distinguish signs.
+
+The segmentation procedure must be reproducible and applicable to unseen images.
+
+## 5.4 Experiment C: Bounding-Box Cropped Images
+
+The third experiment will investigate the use of image crops centered on annotated signing regions.
+
+### Procedure
+
+- Extract the annotated sign region from each image.
+- Add padding around the bounding box to retain relevant surrounding context.
+- Transform bounding-box coordinates into the crop coordinate system.
+- Resize the resulting crops for model input.
+- Train YOLO26 using the processed images and adjusted labels.
+- Evaluate the resulting predictions.
+
+### Purpose
+
+Examine whether focusing the input on the signing region improves recognition by removing irrelevant visual information.
+
+### Important Evaluation Consideration
+
+The source dataset provides ground-truth bounding boxes, but these are not available at inference time in a real-world application.
+
+Therefore, cropping validation or test images using their ground-truth boxes constitutes an **oracle-crop experiment**.
+
+Such results cannot be treated as directly equivalent to end-to-end detection results from the original-image and background-removal configurations.
+
+For a deployable comparison, a separate automatic localization procedure would need to generate the crop at inference time.
+
+Results from oracle cropping will therefore be reported separately unless an equivalent automatic crop-generation pipeline is implemented.
+
+## 5.5 Experimental Comparison
+
+| Experiment | Input Representation | Background | Spatial Focus |
+|---|---|---|---|
+| A | Original images | Preserved | Original full image |
+| B | Background-removed images | Removed or masked | Target signer |
+| C | Bounding-box cropped images | Mostly excluded | Annotated sign region with padding |
+
+Where comparisons are methodologically valid, the experiments will use:
+
+- The same class mapping.
+- The same original train/validation/test membership.
+- The same YOLO26 model variant.
+- The same training budget and random seeds.
+- Consistent class-balancing policies.
+- Equivalent evaluation metrics.
+
+## 5.6 Performance Evaluation
+
+The following metrics will be considered:
+
+| Metric | Purpose |
+|---|---|
+| Precision | Measure the proportion of predicted detections that are correct |
+| Recall | Measure the proportion of ground-truth signs successfully detected |
+| mAP@0.5 | Evaluate detection performance at IoU 0.5 |
+| mAP@0.5:0.95 | Evaluate localization and classification across IoU thresholds |
+| Per-class AP | Identify differences in detection performance across sign classes |
+| Inference latency | Assess practical real-time performance |
+
+Special attention will be given to underrepresented classes, visually similar signs, and images containing complex backgrounds.
+
+The experiments will not be considered evidence of preprocessing improvements until training and evaluation are completed.
+
+**Status:** Three experimental configurations proposed; implementation and comparative evaluation pending.
+
+---
+
+# 6. Original Baseline and Proposed System
+
+## 6.1 Original Reference Implementation
+
+The original reference implementation used YOLOv5m for sign detection.
+
+The model was trained using the NSL dataset and deployed through a DeepStack-based inference pipeline.
+
+The live application converted detected sign labels into speech using `pyttsx3`.
+
+### Baseline Characteristics
+
+| Component | Original Implementation |
+|---|---|
+| Detector | YOLOv5m |
+| Input size | 640 × 640 |
+| Training epochs | 150 |
+| Batch size | 16 |
+| Sign classes | 137 |
+| Speech synthesis | pyttsx3 |
+| Deployment | DeepStack-based pipeline |
+
+The original work reported strong detection performance, including approximately 0.9533 mAP@0.5 and 0.6439 mAP@0.5:0.95.
+
+These values are historical reference results rather than directly comparable measurements from the current project.
+
+A valid comparison requires careful consideration of dataset partitions, preprocessing, training configuration, and evaluation procedures.
+
+## 6.2 Proposed YOLO26 System
+
+The proposed system will replace YOLOv5m with a YOLO26 detector.
+
+YOLO26n and YOLO26s are initial candidate variants.
+
+The proposed system will also introduce confidence filtering and temporal prediction stability before generating spoken output.
+
+### Proposed Architecture
 
 ```text
-Original reference implementation
-webcam frame → resize to 400px width → DeepStack/YOLOv5m → top detection → speak every detected label
-
-Proposed implementation
-webcam frame → deterministic 640px letterbox → local YOLO26n or YOLO26s
-             → confidence gate → temporal stability window → [speak label | abstain/request repeat]
+Camera / Input Image
+        |
+        v
+Image Preprocessing
+        |
+        v
+YOLO26 Sign Detection
+        |
+        v
+Predicted Class + Confidence
+        |
+        v
+Confidence Threshold
+        |
+        v
+Temporal Stability Check
+        |
+        +----------------------+
+        |                      |
+        v                      v
+Stable Prediction       Uncertain Prediction
+        |                      |
+        v                      v
+Text-to-Speech          Request Sign Repetition
 ```
 
-The proposed design separates **detector quality** from **system-output reliability**. Detector metrics (precision, recall, mAP50, and mAP50-95) measure whether YOLO26 recognises and localises signs. Event-level metrics measure the user-facing policy: correct spoken output, incorrect spoken output, correct abstention, incorrect abstention, and end-to-end response time. This distinction prevents a high frame-level score from being mistaken for dependable speech behaviour.
+The goal is not only to improve detection performance but also to reduce incorrect or repetitive speech outputs.
 
-### D3. Reliability-layer protocol
+---
 
-The live inference system will use a confidence threshold `τ` and a fixed temporal window of `W` frames. For each frame, it retains the highest-confidence detection, provided its confidence is at least `τ`.
+# 7. Training and Evaluation Strategy
 
-1. Keep the most recent `W` accepted labels and confidences.
-2. Speak a label only when the same label is present in at least `K` of the `W` frames and its aggregated confidence exceeds `τ`.
-3. Do not repeat a just-spoken label until a cooldown period has elapsed or a different stable label appears.
-4. If there is no qualifying prediction, display an abstention message such as “Please repeat the sign”; do not generate an unsupported spoken label.
+## 7.1 Dataset Partitioning
 
-Initial values (`τ = 0.65`, `W = 8`, `K = 8`, and a two-second cooldown) are starting points, not final claims. They will be selected using validation events only. The final test set will evaluate the locked policy once. The analysis will report the reliability–latency trade-off: stricter settings may reduce incorrect speech but increase abstentions or response delay.
+The initial planned dataset split is:
 
-### D4. Remaining audit work
+| Partition | Percentage |
+|---|---:|
+| Training | 70% |
+| Validation | 15% |
+| Testing | 15% |
 
-The figures above summarize the inspected Pascal VOC collection. The YOLO-format annotations and class ordering, duplicates and near-duplicates, signer/session metadata, and any new split still need separate verification. Original model training plots are historical reference artifacts, not results from this project.
+Final split counts will be calculated after annotation validation and data cleaning.
 
-### Reproducibility and deliverables
+Because some classes contain very few images, class representation across partitions must be inspected before finalizing the split.
 
-The repository will retain the raw dataset outside Git tracking, a versioned class map, split-manifest CSV files, an exclusion log, audit tables, and saved figures. `data/raw/`, `data/processed/`, model weights, and cache files will be ignored by Git. The README will document the dataset source, licence, setup, preprocessing decisions, and exact commands needed to reproduce the split and training workflow.
+Where possible, signer-disjoint partitions will be preferred.
 
-## References
+If signer identities are unavailable, duplicate clusters and identifiable recording sessions will be considered to reduce leakage risks.
 
-- Kolawole, S., Osakuade, O., Saxena, N., & Olorisade, B. K. (2021). *Sign-to-Speech Model for Sign Language Understanding: A Case Study of Nigerian Sign Language.* [arXiv:2111.00995](https://arxiv.org/abs/2111.00995).
-- [Lanfrica / Hugging Face dataset](https://huggingface.co/datasets/Lanfrica/sign-to-speech-for-sign-language-understanding-a-case-study-of-nigerian-sign-language).
-- [Ultralytics YOLO26 documentation](https://docs.ultralytics.com/models/yolo26/).
+## 7.2 Training Configuration
+
+YOLO26n and YOLO26s will be considered as candidate detectors.
+
+Training hyperparameters will be selected using the validation dataset.
+
+The held-out test set will be reserved for final evaluation.
+
+The exact model architecture, batch size, learning rate, epoch count, hardware configuration, random seeds, and software versions will be reported after implementation.
+
+## 7.3 Preprocessing Experiment Evaluation
+
+The three preprocessing configurations will be evaluated under consistent experimental conditions.
+
+The original-image model will establish baseline performance.
+
+Background-removed images will test whether eliminating irrelevant visual information affects detection.
+
+Bounding-box crops will test the value of focusing on sign regions, with oracle-crop limitations reported separately where applicable.
+
+Per-class results will be inspected to determine whether preprocessing affects rare or visually similar signs differently.
+
+The evaluation will distinguish between improvements in detection accuracy, localization quality, and inference efficiency.
+
+---
+
+# 8. Sign-to-Speech Reliability
+
+## 8.1 Confidence Filtering
+
+A confidence threshold will be used to reduce low-confidence speech output.
+
+Predictions below the selected threshold will not immediately trigger speech synthesis.
+
+The confidence threshold will be selected using validation data.
+
+## 8.2 Temporal Stability
+
+The live application will evaluate predictions across multiple consecutive frames.
+
+A sign will be spoken only after a sufficient number of predictions agree within a defined temporal window.
+
+This aims to reduce unstable or rapidly changing spoken outputs.
+
+## 8.3 Abstention and Repetition
+
+If the system cannot produce a sufficiently reliable prediction, it will avoid speaking an unsupported label.
+
+Instead, it may display a message such as:
+
+> Please repeat the sign.
+
+A cooldown mechanism will also be considered to prevent repeated speech when the same sign remains visible.
+
+## 8.4 Reliability Evaluation
+
+Beyond frame-level detection metrics, the deployed system will be assessed using:
+
+- Correct spoken outputs.
+- Incorrect spoken outputs.
+- Correct abstentions.
+- Incorrect abstentions.
+- Repeated outputs.
+- End-to-end inference and speech latency.
+
+This separates detection performance from the reliability of the user-facing sign-to-speech system.
+
+---
+
+# 9. Reproducibility and Remaining Work
+
+## 9.1 Reproducibility
+
+The project will maintain reproducible records of dataset preparation, preprocessing, training, and evaluation.
+
+These will include:
+
+- The original dataset source.
+- Dataset inventory and annotation audit results.
+- Generated visual diagnostic figures.
+- A consistent class-ID mapping.
+- Logs of corrected or excluded annotations.
+- Duplicate-detection results.
+- Train/validation/test split manifests.
+- Preprocessing configurations.
+- Training hyperparameters and random seeds.
+- Evaluation results.
+
+Original source images and annotations will be preserved separately from processed versions.
+
+Large raw datasets, generated model weights, and temporary caches will not be committed to the repository unless appropriate for the repository's distribution requirements and dataset licence.
+
+## 9.2 Remaining Work
+
+The following work remains before final evaluation:
+
+1. Identify and resolve the annotation extraction discrepancy.
+2. Verify consistency between XML and YOLO annotation formats.
+3. Confirm the complete 137-class label mapping.
+4. Review bounding-box and image-quality outliers.
+5. Check for exact and near-duplicate images.
+6. Determine whether signer or recording-session metadata is available.
+7. Finalize leakage-safe training, validation, and testing partitions.
+8. Implement the original-image baseline preprocessing pipeline.
+9. Implement and validate target-signer background removal.
+10. Implement the sign-region cropping experiment.
+11. Train the YOLO26 configurations.
+12. Evaluate detection performance and preprocessing effects.
+13. Implement confidence filtering and temporal stability for speech output.
+14. Update the Strategy vs. Reality Decision Log with completed implementation results.
+
+## 9.3 Current Project Status
+
+| Component | Status |
+|---|---|
+| Dataset indexing | Completed |
+| Class distribution analysis | Completed |
+| Image-dimension analysis | Completed |
+| Bounding-box visual diagnostics | Completed |
+| Initial annotation integrity audit | Completed |
+| Detailed cleaning and exclusion decisions | Pending |
+| Duplicate and leakage audit | Pending |
+| Dataset splitting | Pending |
+| Original-image YOLO26 baseline | Planned |
+| Background-removal experiment | Planned |
+| Bounding-box cropping experiment | Planned |
+| Comparative model evaluation | Planned |
+| Sign-to-speech reliability implementation | Planned |
+
+The final Phase 2 report will distinguish between completed data preparation, implemented preprocessing decisions, and experiments that remain future work.
+
+---
+
+# 10. References
+
+1. Kolawole, S., Osakuade, O., Saxena, N., & Olorisade, B. K. (2021). *Sign-to-Speech Model for Sign Language Understanding: A Case Study of Nigerian Sign Language.* [arXiv:2111.00995](https://arxiv.org/abs/2111.00995).
+
+2. [Nigerian Sign Language Dataset — Lanfrica / Hugging Face](https://huggingface.co/datasets/Lanfrica/sign-to-speech-for-sign-language-understanding-a-case-study-of-nigerian-sign-language).
+
+3. [Ultralytics YOLO26 Documentation](https://docs.ultralytics.com/models/yolo26/).
