@@ -268,9 +268,10 @@ Some of the least represented signs include:
 
 The class imbalance ratio is:
 
-\[
-\text{Imbalance Ratio} = \frac{65}{4} = 16.25
-\]
+Imbalance Ratio = Largest Class / Smallest Class
+
+**Imbalance Ratio = 65 / 4 = 16.25:1**
+
 
 ### Implications
 
