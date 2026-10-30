@@ -621,38 +621,17 @@ Background-removed images will test whether eliminating irrelevant visual inform
 
 ---
 
-# 8. Sign-to-Speech Reliability
+# 8. Model Selection
+### 8. 1 YOLO Version Selection and Selection Criteria
+### 8. 2 Baseline Experiment: YOLO26 on the Original NSL Dataset
 
-## 8.1 Confidence Filtering
+Following the supervisor's recommendation, the initial experiment will train YOLO26 using the original Nigerian Sign Language dataset without class-balancing interventions, background removal, or sign-region cropping.
 
-A confidence threshold will be used to reduce low-confidence speech output. Predictions below the selected threshold will not immediately trigger speech synthesis. The confidence threshold will be selected using validation data.
+The original distribution of 4,815 images across 137 sign classes will be preserved, including the observed class imbalance ranging from 4 to 65 images per class. The dataset will undergo essential annotation validation and the standard preprocessing required by YOLO26. The training configuration, including any default augmentation, will be documented to ensure reproducibility.
 
-## 8.2 Temporal Stability
+Model performance will be evaluated using precision, recall, mAP@0.5, mAP@0.5:0.95, and per-class detection metrics. This baseline will establish the initial performance of YOLO26 on the original dataset and provide a reference for determining whether additional preprocessing or class-balancing strategies are necessary.
 
-The live application will evaluate predictions across multiple consecutive frames. A sign will be spoken only after a sufficient number of predictions agree within a defined temporal window. This aims to reduce unstable or rapidly changing spoken outputs.
-
-## 8.3 Abstention and Repetition
-
-If the system cannot produce a sufficiently reliable prediction, it will avoid speaking an unsupported label. Instead, it may display a message such as:
-
-> Please repeat the sign.
-
-A cooldown mechanism will also be considered to prevent repeated speech when the same sign remains visible.
-
-## 8.4 Reliability Evaluation
-
-Beyond frame-level detection metrics, the deployed system will be assessed using:
-
-- Correct spoken outputs.
-- Incorrect spoken outputs.
-- Correct abstentions.
-- Incorrect abstentions.
-- Repeated outputs.
-- End-to-end inference and speech latency.
-
-This separates detection performance from the reliability of the user-facing sign-to-speech system.
-
----
+**Status:** Baseline experiment defined; training and evaluation pending.
 
 # 9. Reproducibility and Remaining Work
 
