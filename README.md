@@ -26,7 +26,7 @@ The objective is to establish whether background information, background removal
 6. [Original Baseline and Proposed System](#6-original-baseline-and-proposed-system)
 7. [Training and Evaluation Strategy](#7-training-and-evaluation-strategy)
 8. [Model Selection and YOLO26 Baseline](#8-model-selection-and-yolo26-baseline)
-9. [Assignment 3 Verification, Reproducibility, and Remaining Work](#9-assignment-3-verification-reproducibility-and-remaining-work)
+9. Verification, Reproducibility, and Remaining Work](#9-assignment-3-verification-reproducibility-and-remaining-work)
 10. [References](#10-references)
 
 ---
