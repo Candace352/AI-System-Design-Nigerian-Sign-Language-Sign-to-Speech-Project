@@ -25,8 +25,8 @@ The objective is to establish whether background information, background removal
 5. [Comparative Preprocessing Experiments](#5-comparative-preprocessing-experiments)
 6. [Original Baseline and Proposed System](#6-original-baseline-and-proposed-system)
 7. [Training and Evaluation Strategy](#7-training-and-evaluation-strategy)
-8. [Sign-to-Speech Reliability](#8-sign-to-speech-reliability)
-9. [Reproducibility and Remaining Work](#9-reproducibility-and-remaining-work)
+8. [Model Selection and YOLO26 Baseline](#8-model-selection-and-yolo26-baseline)
+9. [Assignment 3 Verification, Reproducibility, and Remaining Work](#9-assignment-3-verification-reproducibility-and-remaining-work)
 10. [References](#10-references)
 
 ---
@@ -309,7 +309,7 @@ YOLO26 requires correctly associated class labels and bounding boxes for supervi
 **Status:** Initial audit completed; cause of the extraction discrepancy requires confirmation.
 
 
-### Finding 3: Image Dimensions
+## 3.4 Finding 3: Image Dimensions
 
 The raw dataset contains images with a resolution of 640 × 480 pixels, while the planned YOLO26 input size is 640 × 640 pixels.
 
@@ -621,9 +621,15 @@ Background-removed images will test whether eliminating irrelevant visual inform
 
 ---
 
-# 8. Model Selection
-### 8. 1 YOLO Version Selection and Selection Criteria
-### 8. 2 Baseline Experiment: YOLO26 on the Original NSL Dataset
+# 8. Model Selection and YOLO26 Baseline
+
+## 8.1 YOLO Version Selection and Selection Criteria
+
+The initial model must support multi-class object detection because each NSL image has both a sign label and a sign-region bounding box. YOLO26 provides pretrained detection variants and a documented training, validation, inference, and export workflow. YOLO26n is the initial baseline because it provides a practical accuracy--latency starting point for a future camera-based sign-to-speech system; YOLO26s is a follow-up candidate only if validation results justify its additional cost.
+
+The original YOLOv5m results are historical context, not a controlled benchmark. A direct comparison requires the same dataset split, preprocessing, training budget, and evaluation method.
+
+## 8.2 Baseline Experiment: YOLO26 on the Original NSL Dataset
 
 Following the supervisor's recommendation, the initial experiment will train YOLO26 using the original Nigerian Sign Language dataset without class-balancing interventions, background removal, or sign-region cropping.
 
@@ -633,28 +639,44 @@ Model performance will be evaluated using precision, recall, mAP@0.5, mAP@0.5:0.
 
 **Status:** Baseline experiment defined; training and evaluation pending.
 
-# 9. Reproducibility and Remaining Work
+# 9. Assignment 3 Verification, Reproducibility, and Remaining Work
 
-## 9.1 Reproducibility
+## 9.1 Assignment-Specific Adaptation to Object Detection
 
-The project will maintain reproducible records of dataset preparation, preprocessing, training, and evaluation.
+The assignment's tabular-data examples require translation to this image-and-annotation project. A raw RGB tensor is not a table of independent numeric predictors, so applying a `ColumnTransformer`, VIF, ordinal encoding, or PCA directly to image pixels would not be a valid replacement for YOLO's detection data loader. The corresponding controls are annotation validation, bounding-box geometry checks, duplicate-group leakage checks, leakage-safe splitting, and training-only image augmentation.
 
-These will include:
+If an auxiliary audit manifest is processed with scikit-learn, every learned statistic or transformer must be fitted on the training partition only. That auxiliary workflow documents data quality; it does not replace YOLO's image and bounding-box preprocessing.
 
-- The original dataset source.
-- Dataset inventory and annotation audit results.
-- Generated visual diagnostic figures.
-- A consistent class-ID mapping.
-- Logs of corrected or excluded annotations.
-- Duplicate-detection results.
-- Train/validation/test split manifests.
-- Preprocessing configurations.
-- Training hyperparameters and random seeds.
-- Evaluation results.
+| Rubric concept | NSL-specific implementation | Current status |
+|---|---|---|
+| Missingness and imputation | Validate image--XML pairs, unreadable files, and empty/invalid boxes; do not synthesize labels | One extracted-box anomaly under review |
+| Target balance | Class-frequency audit: 4--65 images per class; imbalance ratio 16.25:1 | Completed |
+| Outliers | Flag unusual box area/aspect ratio for review; retain valid extreme cases | Diagnostic figures completed; adjudication pending |
+| Correlation and VIF | Audit class associations and duplicate clusters; no raw-pixel VIF | Pending where metadata permits |
+| Transformation stages | Check letterbox geometry and transformed label coordinates | Planned pipeline verification |
+| PCA | Not part of YOLO inference; include only an instructor-approved image-feature diagnostic | Not performed / not claimed |
+| Leakage prevention | Keep duplicate and signer/session groups within one split; augment training only | Pending final split |
 
-Original source images and annotations will be preserved separately from processed versions. Large raw datasets, generated model weights, and temporary caches will not be committed to the repository unless appropriate for the repository's distribution requirements and dataset licence.
+## 9.2 Quantitative Pipeline Output Verification
 
-## 9.2 Remaining Work
+The following values are audit inputs, not claimed final pipeline outputs. After the complete local dataset is processed, replace each pending value with the measured result and retain the supporting manifest or log.
+
+| Verification | Before processing | After processing |
+|---|---:|---:|
+| Image count | 4,815 | Pending |
+| XML annotation files | 4,815 | Pending usable-label count |
+| Images with extracted valid boxes | 4,814 | Pending adjudication |
+| Class count | 137 folder labels | Pending mapped class count |
+| Missing/invalid label records | 1 extraction anomaly | Pending final count |
+| Tensor shape | 480 × 640 × 3 raw image | Planned: 3 × 640 × 640 per image |
+| Train / validation / test sizes | Not yet frozen | Pending / Pending / Pending |
+| Cross-split duplicate clusters | Not yet measured | Target: zero |
+
+## 9.3 Reproducibility
+
+The repository will retain a stable class-ID map, audit tables, diagnostic figures, exclusion or repair logs, split manifests, preprocessing configuration, training settings, random seeds, and final evaluation results. Original source images, generated weights, and temporary caches stay outside Git unless redistribution is permitted by the dataset licence. Every final result must identify the data split, model variant, software version, and run configuration that produced it.
+
+## 9.4 Remaining Work
 
 The following work remains before final evaluation:
 
@@ -673,7 +695,7 @@ The following work remains before final evaluation:
 13. Implement confidence filtering and temporal stability for speech output.
 14. Update the Strategy vs. Reality Decision Log with completed implementation results.
 
-## 9.3 Current Project Status
+## 9.5 Current Project Status
 
 | Component | Status |
 |---|---|
