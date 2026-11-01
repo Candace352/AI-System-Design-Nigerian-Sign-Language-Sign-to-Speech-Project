@@ -639,9 +639,9 @@ Model performance will be evaluated using precision, recall, mAP@0.5, mAP@0.5:0.
 
 **Status:** Baseline experiment defined; training and evaluation pending.
 
-# 9. Assignment 3 Verification, Reproducibility, and Remaining Work
+# 9. Verification, Reproducibility, and Remaining Work
 
-## 9.1 Assignment-Specific Adaptation to Object Detection
+## 9.1 Adaptation to Object Detection
 
 The assignment's tabular-data examples require translation to this image-and-annotation project. A raw RGB tensor is not a table of independent numeric predictors, so applying a `ColumnTransformer`, VIF, ordinal encoding, or PCA directly to image pixels would not be a valid replacement for YOLO's detection data loader. The corresponding controls are annotation validation, bounding-box geometry checks, duplicate-group leakage checks, leakage-safe splitting, and training-only image augmentation.
 
@@ -712,8 +712,6 @@ The following work remains before final evaluation:
 | Bounding-box cropping experiment | Planned |
 | Comparative model evaluation | Planned |
 | Sign-to-speech reliability implementation | Planned |
-
-The final Phase 2 report will distinguish between completed data preparation, implemented preprocessing decisions, and experiments that remain future work.
 
 ---
 
